@@ -1,4 +1,4 @@
-# llmClassificR <img src="man/figures/logo_llmClassificR.png" align="right" height="139" />
+# llmClassificR <img src="man/figures/logo_llmClassificR.png" align="right" height="260" />
 
 ## Text Classification with Large Language Models in R
 
