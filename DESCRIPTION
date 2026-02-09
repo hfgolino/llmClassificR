@@ -1,0 +1,39 @@
+Package: llmClassificR
+Title: Text Classification with Large Language Models in R
+Version: 0.1.0
+Authors@R: 
+    person("Hudson", "Golino", , "hfg9s@virginia.edu", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0002-1601-1447"))
+Description: A user-friendly toolkit for text classification using Large Language 
+  Model APIs and local HuggingFace models. Provides batch zero-shot classification
+  (direct, few-shot, chain-of-thought, structured JSON, multi-model ensemble,
+  scoring, and LLM-as-judge), embedding extraction (API-based via Voyage AI, Jina AI, and
+  local via HuggingFace transformers), retrieval-augmented generation (RAG),
+  automatic topic discovery, and integration with Exploratory Graph Analysis
+  (EGA) for unsupervised text classification. All LLM classification functions
+  send texts in a single batch API call for speed.
+License: GPL (>= 3)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+LazyData: true
+Depends: 
+    R (>= 4.1.0)
+Imports:
+    reticulate,
+    jsonlite,
+    stats,
+    cluster,
+    httr2,
+    utils
+Suggests:
+    EGAnet,
+    aricode,
+    ggpubr,
+    ggplot2,
+    tidyr,
+    dplyr,
+    corrplot,
+    knitr,
+    rmarkdown
+URL: https://github.com/hfgolino/llmClassificR
