@@ -1,19 +1,65 @@
+# ==============================================================================
+# Batch zero-shot classification with LLMs on Groq
+# ==============================================================================
+#
+# All classify_*() functions share the same robust batch engine (since 0.2.0):
+#   - texts are SHUFFLED and sent in CHUNKS (default 40 texts per call), so the
+#     prompt is never ordered by label and never too long;
+#   - answers are mapped back to the allowed classes (normalize_labels());
+#     anything else becomes NA instead of a new class;
+#   - a missing answer or a failed chunk gives NA for those texts instead of
+#     an error for the whole batch;
+#   - results always come back in the ORIGINAL order of `texts`.
+# Set chunk_size = NULL and shuffle = FALSE to reproduce the 0.1.0 behavior
+# (one call with all texts in their original order).
+
+#' Batch settings shared by the classify functions
+#'
+#' @section Batch settings:
+#' \describe{
+#'   \item{\code{chunk_size}}{Texts per API call. Default \code{40}. Use
+#'     \code{NULL} to send all texts in one call.}
+#'   \item{\code{shuffle}}{Shuffle texts before chunking, so texts sorted by
+#'     label do not bias the model. Results are returned in the original
+#'     order. Default \code{TRUE}.}
+#'   \item{\code{seed}}{Seed for the shuffle (the global random state is
+#'     restored). Default \code{2026}.}
+#' }
+#' Answers are mapped to \code{classes} ignoring case and punctuation (see
+#' \code{\link{normalize_labels}}); invalid or missing answers are \code{NA}.
+#' If a whole chunk fails (for example, invalid JSON), its texts get \code{NA}
+#' and a warning is shown. The pause between chunks is
+#' \code{getOption("llmClassificR.pause", 2)} seconds; set
+#' \code{options(llmClassificR.verbose = FALSE)} to hide the progress messages.
+#' @name batch_settings
+#' @keywords internal
+NULL
+
+
 #' Direct zero-shot text classification
 #'
-#' Classifies texts into categories using a single LLM API call. This is the
-#' simplest and fastest classification approach: the model receives all texts
-#' and returns a category for each.
+#' Classifies texts into categories with a Groq LLM. This is the simplest and
+#' fastest classification approach: the model receives a numbered list of
+#' texts and returns one category for each, as JSON.
 #'
 #' @param texts Character vector of texts to classify.
 #' @param classes Character vector of possible category labels.
 #' @param model Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.
 #'   See \code{\link{list_models}} for options.
+#' @param chunk_size Number of texts per API call. Default \code{40};
+#'   \code{NULL} sends all texts in one call.
+#' @param shuffle Logical. Shuffle the texts before chunking (results are
+#'   returned in the original order). Default \code{TRUE}.
+#' @param seed Seed for the shuffle. Default \code{2026}.
+#'
+#' @inheritSection batch_settings Batch settings
 #'
 #' @return A data.frame with columns:
 #' \describe{
 #'   \item{text_id}{Integer index of each text}
 #'   \item{text}{The original text (truncated to 200 characters)}
-#'   \item{prediction}{The predicted category}
+#'   \item{prediction}{The predicted category (one of \code{classes}, or
+#'     \code{NA} if the model gave no valid answer)}
 #' }
 #'
 #' @author Hudson Golino <hfg9s at virginia.edu>
@@ -21,7 +67,7 @@
 #' \dontrun{
 #' data(extraversion)
 #' activate_llm_env()
-#' set_groq_key("your-key")
+#' set_groq_key()   # reads GROQ_API_KEY from ~/.Renviron
 #'
 #' results <- classify_direct(
 #'   texts = extraversion$text,
@@ -29,52 +75,48 @@
 #' )
 #' head(results)
 #'
-#' # Compare with true labels
-#' table(True = extraversion$subtopic, Predicted = results$prediction)
+#' # Evaluate
+#' evaluate_classification(extraversion$subtopic, results$prediction, "Direct")
+#' table(True = extraversion$subtopic, Predicted = results$prediction, useNA = "ifany")
+#'
+#' # The 0.1.0 behavior: one call, texts in their original order
+#' results_one_call <- classify_direct(extraversion$text, unique(extraversion$subtopic),
+#'                                     chunk_size = NULL, shuffle = FALSE)
 #' }
 #'
 #' @seealso \code{\link{classify_fewshot}}, \code{\link{classify_cot}},
-#'   \code{\link{classify_json}}, \code{\link{compare_methods}}
+#'   \code{\link{classify_schema}}, \code{\link{evaluate_classification}},
+#'   \code{\link{compare_methods}}
 #'
 #' @export
 classify_direct <- function(texts, classes,
-                            model = "llama-3.3-70b-versatile") {
+                            model = "openai/gpt-oss-120b",
+                            chunk_size = 40, shuffle = TRUE, seed = 2026) {
+  classes <- as.character(classes)
 
-  client <- .get_groq_client()
-  all_texts <- .format_numbered_texts(texts)
-
-  prompt <- sprintf(
-    'Classify each numbered text into exactly ONE of these categories: %s
+  chunk_fun <- function(x) {
+    prompt <- sprintf(
+      'Classify each numbered text into exactly ONE of these categories: %s
 
 %s
 
 Respond with ONLY a JSON object where keys are the text numbers (as strings)
 and values are the category names.
 Example format: {"1": "category_a", "2": "category_b"}',
-    paste(classes, collapse = ", "), all_texts
-  )
-
-  response <- client$chat$completions$create(
-    model = model,
-    messages = list(list("role" = "user", "content" = prompt)),
-    temperature = 0.0,
-    max_tokens = as.integer(length(texts) * 30),
-    response_format = list("type" = "json_object")
-  )
-
-  results <- jsonlite::fromJSON(response$choices[[1]]$message$content)
-
-  predictions <- character(length(texts))
-  for (i in seq_along(texts)) {
-    predictions[i] <- tolower(results[[as.character(i)]])
+      paste(classes, collapse = ", "), .format_numbered_texts(x)
+    )
+    content <- .groq_chat(prompt, model = model,
+                          max_tokens = length(x) * 30L + 200L,
+                          response_format = list(type = "json_object"))
+    results <- .parse_json(content)
+    raw <- vapply(seq_along(x), function(i) .get_string(results, i), character(1))
+    data.frame(prediction = normalize_labels(raw, classes), stringsAsFactors = FALSE)
   }
 
-  data.frame(
-    text_id = seq_along(texts),
-    text = substr(texts, 1, 200),
-    prediction = predictions,
-    stringsAsFactors = FALSE
-  )
+  res <- .batch_classify(texts, chunk_fun, chunk_size, shuffle, seed,
+                         template = data.frame(prediction = NA_character_))
+  .report_invalid(res$prediction)
+  .with_text_cols(texts, res)
 }
 
 
@@ -83,59 +125,63 @@ Example format: {"1": "category_a", "2": "category_b"}',
 #' Classifies texts by providing labeled examples to guide the model. The
 #' model sees example text-label pairs before classifying the target texts.
 #' This often improves accuracy over direct zero-shot, especially for
-#' ambiguous categories.
+#' ambiguous categories. Never evaluate on the texts used as examples.
 #'
-#' @param texts Character vector of texts to classify.
-#' @param classes Character vector of possible category labels.
+#' @inheritParams classify_direct
 #' @param examples A data.frame with columns \code{text} and \code{label},
 #'   containing labeled examples (2-3 per class is typical).
-#' @param model Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.
 #'
-#' @return A data.frame with columns:
-#' \describe{
-#'   \item{text_id}{Integer index of each text}
-#'   \item{text}{The original text (truncated to 200 characters)}
-#'   \item{prediction}{The predicted category}
-#' }
+#' @inheritSection batch_settings Batch settings
+#'
+#' @return A data.frame with columns \code{text_id}, \code{text} and
+#'   \code{prediction}.
 #'
 #' @examples
 #' \dontrun{
 #' data(extraversion)
 #'
-#' # Create examples: first 2 texts from each class
-#' examples <- do.call(rbind, lapply(unique(extraversion$subtopic), function(cls) {
-#'   idx <- which(extraversion$subtopic == cls)
-#'   data.frame(text = extraversion$text[idx[1:2]],
-#'              label = cls, stringsAsFactors = FALSE)
+#' # Examples: first 2 texts from each class
+#' example_idx <- unlist(lapply(unique(extraversion$subtopic), function(cls) {
+#'   head(which(extraversion$subtopic == cls), 2)
 #' }))
+#' examples <- data.frame(text = extraversion$text[example_idx],
+#'                        label = extraversion$subtopic[example_idx])
 #'
-#' # Classify the remaining texts
-#' test_idx <- setdiff(1:nrow(extraversion), which(extraversion$text %in% examples$text))
+#' # Classify (and evaluate) only the remaining texts
+#' test_idx <- setdiff(seq_len(nrow(extraversion)), example_idx)
 #' results <- classify_fewshot(
 #'   texts = extraversion$text[test_idx],
 #'   classes = unique(extraversion$subtopic),
 #'   examples = examples
 #' )
+#' evaluate_classification(extraversion$subtopic[test_idx], results$prediction, "Few-shot")
 #' }
 #'
 #' @seealso \code{\link{classify_direct}}, \code{\link{classify_cot}}
 #'
 #' @export
 classify_fewshot <- function(texts, classes, examples,
-                             model = "llama-3.3-70b-versatile") {
+                             model = "openai/gpt-oss-120b",
+                             chunk_size = 40, shuffle = TRUE, seed = 2026) {
+  classes <- as.character(classes)
 
-  client <- .get_groq_client()
+  if (!all(c("text", "label") %in% names(examples))) {
+    stop("'examples' must be a data.frame with columns 'text' and 'label'.", call. = FALSE)
+  }
+  if (any(examples$text %in% texts)) {
+    warning("Some few-shot examples are also in 'texts'; evaluate only on the other texts.",
+            call. = FALSE)
+  }
 
-  # Format examples
-  example_str <- paste(sapply(seq_len(nrow(examples)), function(i) {
-    sprintf('Text: "%s"\nCategory: %s',
-            substr(examples$text[i], 1, 200), examples$label[i])
-  }), collapse = "\n\n")
+  # Shuffle the examples too, so they are not ordered by label
+  ex <- examples[.with_seed(seed, sample(nrow(examples))), , drop = FALSE]
+  example_str <- paste(vapply(seq_len(nrow(ex)), function(i) {
+    sprintf('Text: "%s"\nCategory: %s', substr(ex$text[i], 1, 300), ex$label[i])
+  }, character(1)), collapse = "\n\n")
 
-  all_texts <- .format_numbered_texts(texts)
-
-  prompt <- sprintf(
-    'Classify each numbered text into one of these categories: %s
+  chunk_fun <- function(x) {
+    prompt <- sprintf(
+      'Classify each numbered text into one of these categories: %s
 
 Here are some labeled examples:
 %s
@@ -145,51 +191,44 @@ Now classify ALL of these texts:
 
 Respond with ONLY a JSON object where keys are the text numbers (as strings)
 and values are the category names.',
-    paste(classes, collapse = ", "), example_str, all_texts
-  )
-
-  response <- client$chat$completions$create(
-    model = model,
-    messages = list(list("role" = "user", "content" = prompt)),
-    temperature = 0.0,
-    max_tokens = as.integer(length(texts) * 30),
-    response_format = list("type" = "json_object")
-  )
-
-  results <- jsonlite::fromJSON(response$choices[[1]]$message$content)
-
-  predictions <- character(length(texts))
-  for (i in seq_along(texts)) {
-    predictions[i] <- tolower(results[[as.character(i)]])
+      paste(classes, collapse = ", "), example_str, .format_numbered_texts(x)
+    )
+    content <- .groq_chat(prompt, model = model,
+                          max_tokens = length(x) * 30L + 200L,
+                          response_format = list(type = "json_object"))
+    results <- .parse_json(content)
+    raw <- vapply(seq_along(x), function(i) .get_string(results, i), character(1))
+    data.frame(prediction = normalize_labels(raw, classes), stringsAsFactors = FALSE)
   }
 
-  data.frame(
-    text_id = seq_along(texts),
-    text = substr(texts, 1, 200),
-    prediction = predictions,
-    stringsAsFactors = FALSE
-  )
+  res <- .batch_classify(texts, chunk_fun, chunk_size, shuffle, seed,
+                         template = data.frame(prediction = NA_character_))
+  .report_invalid(res$prediction)
+  .with_text_cols(texts, res)
 }
 
 
 #' Chain-of-thought text classification
 #'
-#' Classifies texts by asking the model to reason step-by-step before
-#' assigning a category. Returns both the prediction and the reasoning
-#' for each text. This approach often improves accuracy on harder
-#' classification tasks by encouraging the model to analyze key features.
+#' Classifies texts by asking the model to reason briefly before assigning a
+#' category. Returns both the prediction and the reasoning for each text.
 #'
-#' @param texts Character vector of texts to classify.
-#' @param classes Character vector of possible category labels.
-#' @param model Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.
+#' @inheritParams classify_direct
+#'
+#' @inheritSection batch_settings Batch settings
 #'
 #' @return A data.frame with columns:
 #' \describe{
 #'   \item{text_id}{Integer index}
 #'   \item{text}{Original text (truncated)}
-#'   \item{prediction}{Predicted category}
+#'   \item{prediction}{Predicted category (or \code{NA})}
 #'   \item{reasoning}{Model's reasoning for the classification}
 #' }
+#'
+#' @details Reasoning models (\code{openai/gpt-oss-20b},
+#'   \code{openai/gpt-oss-120b}, \code{qwen/qwen3.8-27b}) already "think"
+#'   internally; with them, explicit chain-of-thought prompting usually adds
+#'   little.
 #'
 #' @examples
 #' \dontrun{
@@ -208,16 +247,16 @@ and values are the category names.',
 #'
 #' @export
 classify_cot <- function(texts, classes,
-                         model = "llama-3.3-70b-versatile") {
-
-  client <- .get_groq_client()
-  all_texts <- .format_numbered_texts(texts)
+                         model = "openai/gpt-oss-120b",
+                         chunk_size = 40, shuffle = TRUE, seed = 2026) {
+  classes <- as.character(classes)
 
   system_prompt <- "You are an expert text classifier. For each text, briefly
 analyze the key features before classifying."
 
-  prompt <- sprintf(
-    'For each numbered text below, classify it into exactly ONE of these categories: %s
+  chunk_fun <- function(x) {
+    prompt <- sprintf(
+      'For each numbered text below, classify it into exactly ONE of these categories: %s
 
 %s
 
@@ -227,58 +266,44 @@ Think step by step for each text. Then return a JSON object with this structure:
   "2": {"reasoning": "brief analysis", "category": "chosen_category"}
 }
 Return ONLY valid JSON.',
-    paste(classes, collapse = ", "), all_texts
-  )
-
-  response <- client$chat$completions$create(
-    model = model,
-    messages = list(
-      list("role" = "system", "content" = system_prompt),
-      list("role" = "user", "content" = prompt)
-    ),
-    temperature = 0.0,
-    max_tokens = as.integer(length(texts) * 80),
-    response_format = list("type" = "json_object")
-  )
-
-  results <- jsonlite::fromJSON(response$choices[[1]]$message$content)
-
-  predictions <- character(length(texts))
-  reasoning <- character(length(texts))
-  for (i in seq_along(texts)) {
-    entry <- results[[as.character(i)]]
-    predictions[i] <- tolower(entry$category)
-    reasoning[i] <- entry$reasoning
+      paste(classes, collapse = ", "), .format_numbered_texts(x)
+    )
+    content <- .groq_chat(prompt, model = model, system = system_prompt,
+                          max_tokens = length(x) * 80L + 200L,
+                          response_format = list(type = "json_object"))
+    results <- .parse_json(content)
+    data.frame(
+      prediction = normalize_labels(
+        vapply(seq_along(x), function(i) .get_string(results, i, "category"),
+               character(1)), classes),
+      reasoning = vapply(seq_along(x), function(i) .get_string(results, i, "reasoning"),
+                         character(1)),
+      stringsAsFactors = FALSE
+    )
   }
 
-  data.frame(
-    text_id = seq_along(texts),
-    text = substr(texts, 1, 200),
-    prediction = predictions,
-    reasoning = reasoning,
-    stringsAsFactors = FALSE
-  )
+  res <- .batch_classify(texts, chunk_fun, chunk_size, shuffle, seed,
+                         template = data.frame(prediction = NA_character_,
+                                               reasoning = NA_character_))
+  .report_invalid(res$prediction)
+  .with_text_cols(texts, res)
 }
 
 
 #' Structured JSON text classification with confidence
 #'
-#' Classifies texts and returns structured output including the predicted
-#' category, a confidence level (high/medium/low), and a brief reasoning
-#' for each text. Uses JSON mode for reliable parsing.
+#' Classifies texts and returns the predicted category, a verbalized
+#' confidence level (high/medium/low) and a brief reasoning for each text.
+#' Uses JSON mode. For output that is \emph{guaranteed} to follow the format
+#' (categories restricted to \code{classes}), see \code{\link{classify_schema}}.
 #'
-#' @param texts Character vector of texts to classify.
-#' @param classes Character vector of possible category labels.
-#' @param model Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.
+#' @inheritParams classify_direct
 #'
-#' @return A data.frame with columns:
-#' \describe{
-#'   \item{text_id}{Integer index}
-#'   \item{text}{Original text (truncated)}
-#'   \item{prediction}{Predicted category}
-#'   \item{confidence}{Confidence level: "high", "medium", or "low"}
-#'   \item{reasoning}{Brief explanation of the classification}
-#' }
+#' @inheritSection batch_settings Batch settings
+#'
+#' @return A data.frame with columns \code{text_id}, \code{text},
+#'   \code{prediction}, \code{confidence} ("high", "medium" or "low") and
+#'   \code{reasoning}.
 #'
 #' @examples
 #' \dontrun{
@@ -289,24 +314,21 @@ Return ONLY valid JSON.',
 #'   classes = unique(extraversion$subtopic)
 #' )
 #'
-#' # Confidence distribution
-#' table(results$confidence)
-#'
-#' # Look at low-confidence predictions
-#' results[results$confidence == "low", ]
+#' # Is stated confidence related to accuracy?
+#' tapply(results$prediction == extraversion$subtopic, results$confidence, mean)
 #' }
 #'
-#' @seealso \code{\link{classify_direct}}, \code{\link{classify_judge}}
+#' @seealso \code{\link{classify_schema}}, \code{\link{classify_judge}}
 #'
 #' @export
 classify_json <- function(texts, classes,
-                          model = "llama-3.3-70b-versatile") {
+                          model = "openai/gpt-oss-120b",
+                          chunk_size = 40, shuffle = TRUE, seed = 2026) {
+  classes <- as.character(classes)
 
-  client <- .get_groq_client()
-  all_texts <- .format_numbered_texts(texts)
-
-  prompt <- sprintf(
-    'Classify each numbered text into one of these categories: %s
+  chunk_fun <- function(x) {
+    prompt <- sprintf(
+      'Classify each numbered text into one of these categories: %s
 
 %s
 
@@ -321,59 +343,178 @@ Return a JSON object with text numbers as keys:
   "2": {"category": "cat_name", "confidence": "medium", "reasoning": "explanation"}
 }
 Return ONLY valid JSON.',
-    paste(classes, collapse = ", "), all_texts
-  )
-
-  response <- client$chat$completions$create(
-    model = model,
-    messages = list(list("role" = "user", "content" = prompt)),
-    temperature = 0.0,
-    max_tokens = as.integer(length(texts) * 80),
-    response_format = list("type" = "json_object")
-  )
-
-  results <- jsonlite::fromJSON(response$choices[[1]]$message$content)
-
-  predictions <- character(length(texts))
-  confidence <- character(length(texts))
-  reasoning <- character(length(texts))
-  for (i in seq_along(texts)) {
-    entry <- results[[as.character(i)]]
-    predictions[i] <- tolower(entry$category)
-    confidence[i] <- tolower(entry$confidence)
-    reasoning[i] <- entry$reasoning
+      paste(classes, collapse = ", "), .format_numbered_texts(x)
+    )
+    content <- .groq_chat(prompt, model = model,
+                          max_tokens = length(x) * 80L + 200L,
+                          response_format = list(type = "json_object"))
+    results <- .parse_json(content)
+    get <- function(field) vapply(seq_along(x), function(i) {
+      .get_string(results, i, field)
+    }, character(1))
+    data.frame(prediction = normalize_labels(get("category"), classes),
+               confidence = normalize_labels(get("confidence"), c("high", "medium", "low")),
+               reasoning = get("reasoning"),
+               stringsAsFactors = FALSE)
   }
 
-  data.frame(
-    text_id = seq_along(texts),
-    text = substr(texts, 1, 200),
-    prediction = predictions,
-    confidence = confidence,
-    reasoning = reasoning,
-    stringsAsFactors = FALSE
+  res <- .batch_classify(texts, chunk_fun, chunk_size, shuffle, seed,
+                         template = data.frame(prediction = NA_character_,
+                                               confidence = NA_character_,
+                                               reasoning = NA_character_))
+  .report_invalid(res$prediction)
+  .with_text_cols(texts, res)
+}
+
+
+#' Classification with a strict JSON Schema (constrained decoding)
+#'
+#' With a JSON Schema in strict mode, the model can only produce output that
+#' matches the schema: every text gets an \code{id}, and the category MUST be
+#' one of \code{classes} (an \code{enum}). Parsing cannot fail and invalid
+#' labels cannot occur.
+#'
+#' @inheritParams classify_direct
+#' @param model A Groq model that supports strict structured outputs. Default
+#'   is \code{"openai/gpt-oss-20b"}; \code{"openai/gpt-oss-120b"} and
+#'   \code{"qwen/qwen3.8-27b"} also work (September 2026).
+#' @param with_confidence Logical. Also return a verbalized confidence
+#'   (high/medium/low) and a one-sentence reasoning. Default \code{TRUE}.
+#' @param chunk_size Number of texts per API call. Default \code{30}.
+#'
+#' @inheritSection batch_settings Batch settings
+#'
+#' @return A data.frame with \code{text_id}, \code{text}, \code{prediction}
+#'   and (if \code{with_confidence = TRUE}) \code{confidence} and
+#'   \code{reasoning}.
+#'
+#' @author Hudson Golino <hfg9s at virginia.edu>
+#'
+#' @examples
+#' # The schema sent to the model (runs without an API key)
+#' str(classification_schema(c("Friendly", "Positive")), max.level = 3)
+#'
+#' \dontrun{
+#' data(extraversion)
+#' res <- classify_schema(extraversion$text, unique(extraversion$subtopic))
+#' table(res$prediction, useNA = "ifany")   # only the four facets (or NA)
+#' evaluate_classification(extraversion$subtopic, res$prediction, "Strict schema")
+#' }
+#'
+#' @seealso \code{\link{classify_json}}, \code{\link{generate_labeled_texts}}
+#' @export
+classify_schema <- function(texts, classes,
+                            model = "openai/gpt-oss-20b",
+                            with_confidence = TRUE,
+                            chunk_size = 30, shuffle = TRUE, seed = 2026) {
+  classes <- as.character(classes)
+
+  schema_format <- list(
+    type = "json_schema",
+    json_schema = list(name = "classifications", strict = TRUE,
+                       schema = classification_schema(classes, with_confidence))
+  )
+
+  chunk_fun <- function(x) {
+    extra <- if (with_confidence) {
+      ', your "confidence" ("high", "medium", or "low") and a one-sentence "reasoning"'
+    } else {
+      ""
+    }
+    prompt <- sprintf(
+      'Classify each numbered text into one of these categories: %s
+
+%s
+
+For each text return its number as "id", the "category"%s.',
+      paste(classes, collapse = ", "), .format_numbered_texts(x), extra
+    )
+    content <- .groq_chat(prompt, model = model,
+                          max_tokens = length(x) * (if (with_confidence) 80L else 25L) + 300L,
+                          response_format = schema_format)
+    results <- .parse_json(content)$classifications
+    m <- match(seq_along(x), results$id)   # align by id, whatever the order
+    out <- data.frame(prediction = normalize_labels(results$category[m], classes),
+                      stringsAsFactors = FALSE)
+    if (with_confidence) {
+      out$confidence <- as.character(results$confidence[m])
+      out$reasoning <- as.character(results$reasoning[m])
+    }
+    out
+  }
+
+  template <- data.frame(prediction = NA_character_)
+  if (with_confidence) {
+    template$confidence <- NA_character_
+    template$reasoning <- NA_character_
+  }
+  res <- .batch_classify(texts, chunk_fun, chunk_size, shuffle, seed, template)
+  .report_invalid(res$prediction)
+  .with_text_cols(texts, res)
+}
+
+
+#' JSON Schema for batch classification
+#'
+#' Builds the JSON Schema used by \code{\link{classify_schema}}: an object
+#' with an array \code{classifications}; each item has an integer \code{id}
+#' and a \code{category} restricted to \code{classes}.
+#'
+#' @param classes Character vector of allowed categories.
+#' @param with_confidence Logical. Add \code{confidence} (high/medium/low)
+#'   and \code{reasoning} fields. Default \code{TRUE}.
+#'
+#' @return A nested list (converted to JSON when sent to the API).
+#'
+#' @examples
+#' schema <- classification_schema(c("Friendly", "Positive", "Assertive", "Energetic"))
+#' cat(jsonlite::toJSON(schema, auto_unbox = TRUE, pretty = TRUE))
+#'
+#' @export
+classification_schema <- function(classes, with_confidence = TRUE) {
+  item_properties <- list(
+    id = list(type = "integer"),
+    category = list(type = "string", enum = as.list(classes))
+  )
+  required <- list("id", "category")
+  if (with_confidence) {
+    item_properties$confidence <- list(type = "string", enum = list("high", "medium", "low"))
+    item_properties$reasoning <- list(type = "string")
+    required <- c(required, list("confidence", "reasoning"))
+  }
+  list(
+    type = "object",
+    properties = list(
+      classifications = list(
+        type = "array",
+        items = list(type = "object", properties = item_properties,
+                     required = required, additionalProperties = FALSE)
+      )
+    ),
+    required = list("classifications"),
+    additionalProperties = FALSE
   )
 }
 
 
 #' Multi-model ensemble classification
 #'
-#' Classifies texts using multiple LLM models and takes a majority vote.
-#' Each model classifies all texts in a single batch call, then predictions
-#' are combined via majority vote. This approach is more robust than any
-#' single model.
+#' Classifies texts with several LLMs (each with \code{\link{classify_direct}})
+#' and takes a majority vote. Ties are broken by the order of \code{models}.
 #'
-#' @param texts Character vector of texts to classify.
-#' @param classes Character vector of possible category labels.
+#' @inheritParams classify_direct
 #' @param models Character vector of Groq model names. Default uses three
-#'   models: \code{llama-3.3-70b-versatile}, \code{llama-3.1-8b-instant},
-#'   and \code{gemma2-9b-it}.
+#'   production models: \code{llama-3.3-70b-versatile},
+#'   \code{llama-3.1-8b-instant} and \code{openai/gpt-oss-20b}.
+#'
+#' @inheritSection batch_settings Batch settings
 #'
 #' @return A data.frame with columns:
 #' \describe{
 #'   \item{text_id}{Integer index}
 #'   \item{text}{Original text (truncated)}
 #'   \item{prediction}{Majority vote prediction}
-#'   \item{agreement}{Logical: did all models agree?}
+#'   \item{agreement}{Logical: did all models with a valid answer agree?}
 #'   \item{votes}{Comma-separated individual model predictions}
 #' }
 #'
@@ -386,52 +527,51 @@ Return ONLY valid JSON.',
 #'   classes = unique(extraversion$subtopic)
 #' )
 #'
-#' # How often do all models agree?
+#' # How often do all models agree? Are unanimous votes more accurate?
 #' mean(results$agreement)
-#'
-#' # Look at disagreements
-#' results[!results$agreement, c("text", "prediction", "votes")]
+#' tapply(results$prediction == extraversion$subtopic, results$agreement, mean)
 #' }
 #'
-#' @seealso \code{\link{classify_direct}}, \code{\link{list_models}}
+#' @seealso \code{\link{classify_direct}}, \code{\link{classify_self_consistency}},
+#'   \code{\link{list_models}}
 #'
 #' @export
 classify_ensemble <- function(texts, classes,
                               models = c("llama-3.3-70b-versatile",
                                          "llama-3.1-8b-instant",
-                                         "openai/gpt-oss-20b")) {
+                                         "openai/gpt-oss-20b"),
+                              chunk_size = 40, shuffle = TRUE, seed = 2026) {
+  classes <- as.character(classes)
 
   cat("Running ensemble across", length(models), "models...\n")
 
-  # Get batch predictions from each model
   model_preds <- list()
   for (m in seq_along(models)) {
-    cat("  Model", m, ":", models[m], "...")
+    cat("  Model", m, ":", models[m], "\n")
     model_preds[[m]] <- tryCatch({
-      res <- classify_direct(texts, classes, model = models[m])
-      cat(" done\n")
+      res <- classify_direct(texts, classes, model = models[m],
+                             chunk_size = chunk_size, shuffle = shuffle, seed = seed)
       res$prediction
     }, error = function(e) {
-      cat(" FAILED\n")
+      cat("  FAILED:", conditionMessage(e), "\n")
       rep(NA_character_, length(texts))
     })
   }
 
-  # Majority vote
   predictions <- character(length(texts))
   agreement <- logical(length(texts))
   votes_str <- character(length(texts))
 
   for (i in seq_along(texts)) {
-    votes <- sapply(model_preds, function(p) p[i])
+    votes <- vapply(model_preds, function(p) p[i], character(1))
     votes_str[i] <- paste(votes, collapse = ", ")
     valid <- votes[!is.na(votes)]
     if (length(valid) == 0) {
       predictions[i] <- NA_character_
       agreement[i] <- FALSE
     } else {
-      vote_table <- sort(table(valid), decreasing = TRUE)
-      predictions[i] <- names(vote_table)[1]
+      counts <- table(factor(valid, levels = unique(valid)))   # ties -> first model
+      predictions[i] <- names(counts)[which.max(counts)]
       agreement[i] <- length(unique(valid)) == 1
     }
   }
@@ -449,52 +589,137 @@ classify_ensemble <- function(texts, classes,
 }
 
 
+#' Self-consistency classification (vote probabilities)
+#'
+#' Asks the same model the same question several times, with some randomness
+#' (\code{temperature > 0}) and a different text order every run. The share
+#' of runs that voted for each class is a probability estimate: 5 of 5 votes
+#' gives 1.0, 3 of 5 gives 0.6. This gives probabilities without access to
+#' token log-probabilities, so they can be evaluated with
+#' \code{\link{calibration_metrics}}.
+#'
+#' @inheritParams classify_direct
+#' @param n_runs Number of runs. Default \code{5}. Cost grows linearly.
+#' @param temperature Sampling temperature. Default \code{0.8}.
+#'
+#' @return A data.frame with \code{text_id}, \code{text}, \code{prediction}
+#'   (majority vote), \code{confidence} (vote share of the prediction) and one
+#'   probability column per class. The attribute \code{"votes"} holds the
+#'   texts x runs matrix of individual answers.
+#'
+#' @author Hudson Golino <hfg9s at virginia.edu>
+#'
+#' @examples
+#' \dontrun{
+#' data(extraversion)
+#' classes <- unique(extraversion$subtopic)
+#'
+#' sc <- classify_self_consistency(extraversion$text, classes, n_runs = 5)
+#' head(sc)
+#' calibration_metrics(as.matrix(sc[, classes]), extraversion$subtopic, "Self-consistency")
+#' }
+#'
+#' @seealso \code{\link{classify_ensemble}}, \code{\link{calibration_metrics}}
+#' @export
+classify_self_consistency <- function(texts, classes, n_runs = 5,
+                                      temperature = 0.8,
+                                      model = "llama-3.3-70b-versatile",
+                                      chunk_size = 40, seed = 2026) {
+  classes <- as.character(classes)
+  votes <- vapply(seq_len(n_runs), function(r) {
+    cat("Self-consistency run", r, "of", n_runs, "\n")
+    chunk_fun <- function(x) {
+      prompt <- sprintf(
+        'Classify each numbered text into exactly ONE of these categories: %s
+
+%s
+
+Respond with ONLY a JSON object where keys are the text numbers (as strings)
+and values are the category names.',
+        paste(classes, collapse = ", "), .format_numbered_texts(x)
+      )
+      content <- .groq_chat(prompt, model = model, temperature = temperature,
+                            max_tokens = length(x) * 30L + 200L,
+                            response_format = list(type = "json_object"))
+      results <- .parse_json(content)
+      raw <- vapply(seq_along(x), function(i) .get_string(results, i), character(1))
+      data.frame(prediction = normalize_labels(raw, classes), stringsAsFactors = FALSE)
+    }
+    # A different shuffle in every run
+    .batch_classify(texts, chunk_fun, chunk_size, shuffle = TRUE,
+                    seed = if (is.null(seed)) NULL else seed + r,
+                    template = data.frame(prediction = NA_character_))$prediction
+  }, character(length(texts)))
+  votes <- matrix(votes, nrow = length(texts))
+
+  probs <- matrix(vapply(seq_len(nrow(votes)), function(i) {
+    v <- votes[i, ]
+    v <- v[!is.na(v)]
+    if (length(v) == 0) return(rep(NA_real_, length(classes)))
+    vapply(classes, function(cl) mean(v == cl), numeric(1))
+  }, numeric(length(classes))), ncol = length(classes), byrow = TRUE,
+  dimnames = list(NULL, classes))
+  answered <- stats::complete.cases(probs)
+  prediction <- rep(NA_character_, length(texts))
+  prediction[answered] <- classes[max.col(probs[answered, , drop = FALSE], ties.method = "first")]
+  confidence <- rep(NA_real_, length(texts))
+  confidence[answered] <- apply(probs[answered, , drop = FALSE], 1, max)
+
+  out <- data.frame(text_id = seq_along(texts), text = substr(texts, 1, 200),
+                    prediction = prediction, confidence = confidence,
+                    probs, check.names = FALSE, stringsAsFactors = FALSE)
+  attr(out, "votes") <- votes
+  .report_invalid(prediction)
+  out
+}
+
+
 #' Classification with per-class scores
 #'
 #' Instead of assigning a single label, this function asks the model to
-#' rate how well each text matches each category on a 0-100 scale. This
-#' is analogous to the entailment scores produced by NLI-based zero-shot
-#' models and is useful when you need soft assignments or confidence
-#' calibration.
+#' rate how well each text matches each category on a 0-100 scale
+#' (verbalized scores). Rescaled to sum to 1, they can be treated as
+#' probabilities and checked with \code{\link{calibration_metrics}}.
 #'
-#' @param texts Character vector of texts to classify.
-#' @param classes Character vector of possible category labels.
-#' @param model Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.
+#' @inheritParams classify_direct
+#'
+#' @inheritSection batch_settings Batch settings
 #'
 #' @return A data.frame with columns:
 #' \describe{
 #'   \item{text_id}{Integer index}
-#'   \item{prediction}{Predicted category (highest score)}
-#'   \item{...}{One numeric column per class with 0-100 scores}
+#'   \item{prediction}{Predicted category (highest score), \code{NA} if the
+#'     text received no scores}
+#'   \item{...}{One numeric column per class (named as in \code{classes})
+#'     with 0-100 scores}
 #' }
 #'
 #' @examples
 #' \dontrun{
 #' data(extraversion)
+#' classes <- unique(extraversion$subtopic)
 #'
-#' results <- classify_scores(
-#'   texts = extraversion$text,
-#'   classes = unique(extraversion$subtopic)
-#' )
-#'
-#' # View score distribution
+#' results <- classify_scores(extraversion$text, classes)
 #' head(results)
 #'
-#' # Mean scores by true category (requires dplyr/tidyr)
+#' # Scores -> probabilities -> calibration
+#' calibration_metrics(as.matrix(results[, classes]), extraversion$subtopic,
+#'                     "Verbalized scores")
 #' }
 #'
-#' @seealso \code{\link{classify_direct}}, \code{\link{classify_json}}
+#' @seealso \code{\link{classify_direct}}, \code{\link{classify_self_consistency}}
 #'
 #' @export
 classify_scores <- function(texts, classes,
-                            model = "llama-3.3-70b-versatile") {
+                            model = "llama-3.3-70b-versatile",
+                            chunk_size = 40, shuffle = TRUE, seed = 2026) {
+  classes <- as.character(classes)
 
-  client <- .get_groq_client()
-  all_texts <- .format_numbered_texts(texts)
   classes_str <- paste(sprintf('"%s"', classes), collapse = ", ")
 
-  prompt <- sprintf(
-    'Rate how well each numbered text matches each of these categories on a scale from 0 to 100.
+  chunk_fun <- function(x) {
+    prompt <- sprintf(
+      'Rate how well each numbered text matches each of these categories on a scale from 0 to 100.
 
 Categories: %s
 
@@ -505,41 +730,38 @@ with each category as a key and its score (0-100) as the value.
 Scores for each text should sum to approximately 100.
 Example: {"1": {"cat_a": 70, "cat_b": 20, "cat_c": 10}}
 Return ONLY valid JSON.',
-    classes_str, all_texts
-  )
-
-  response <- client$chat$completions$create(
-    model = model,
-    messages = list(list("role" = "user", "content" = prompt)),
-    temperature = 0.0,
-    max_tokens = as.integer(length(texts) * 50),
-    response_format = list("type" = "json_object")
-  )
-
-  results <- jsonlite::fromJSON(response$choices[[1]]$message$content)
-
-  # Build scores matrix
-  scores_list <- list()
-  for (i in seq_along(texts)) {
-    entry <- results[[as.character(i)]]
-    scores_list[[i]] <- as.data.frame(t(unlist(entry)))
-  }
-  scores_df <- do.call(rbind, scores_list)
-  colnames(scores_df) <- tolower(colnames(scores_df))
-
-  # Ensure numeric
-  for (col in colnames(scores_df)) {
-    scores_df[[col]] <- as.numeric(scores_df[[col]])
+      classes_str, .format_numbered_texts(x)
+    )
+    content <- .groq_chat(prompt, model = model,
+                          max_tokens = length(x) * (12L * length(classes) + 10L) + 200L,
+                          response_format = list(type = "json_object"))
+    results <- .parse_json(content)
+    scores <- t(vapply(seq_along(x), function(i) {
+      entry <- results[[as.character(i)]]
+      if (is.null(entry) || !is.list(entry)) return(rep(NA_real_, length(classes)))
+      keys <- normalize_labels(names(entry), classes)
+      vapply(classes, function(cl) {
+        k <- which(keys == cl)[1]
+        if (is.na(k)) 0 else suppressWarnings(as.numeric(entry[[k]]))
+      }, numeric(1))
+    }, numeric(length(classes))))
+    scores <- matrix(scores, nrow = length(x))
+    colnames(scores) <- classes
+    as.data.frame(scores, check.names = FALSE)
   }
 
-  # Predicted class = highest score
-  predictions <- apply(scores_df, 1, function(x) names(x)[which.max(x)])
+  template <- as.data.frame(matrix(NA_real_, 1, length(classes),
+                                   dimnames = list(NULL, classes)), check.names = FALSE)
+  res <- .batch_classify(texts, chunk_fun, chunk_size, shuffle, seed, template)
+  S <- as.matrix(res[, classes, drop = FALSE])
+  answered <- stats::complete.cases(S) & rowSums(S) > 0
+  prediction <- rep(NA_character_, length(texts))
+  prediction[answered] <- classes[max.col(S[answered, , drop = FALSE], ties.method = "first")]
+  .report_invalid(prediction)
 
-  cbind(
-    data.frame(text_id = seq_along(texts), prediction = predictions,
-               stringsAsFactors = FALSE),
-    scores_df
-  )
+  cbind(data.frame(text_id = seq_along(texts), prediction = prediction,
+                   stringsAsFactors = FALSE),
+        res[, classes, drop = FALSE])
 }
 
 
@@ -550,17 +772,17 @@ Return ONLY valid JSON.',
 #' suitable for qualitative research, where you need to justify why each
 #' text was assigned to a category.
 #'
-#' @param texts Character vector of texts to classify.
-#' @param classes Character vector of possible category labels.
+#' @inheritParams classify_direct
 #' @param persona Character string describing the expert persona for the
 #'   system prompt. Default is a personality psychologist.
-#' @param model Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.
+#'
+#' @inheritSection batch_settings Batch settings
 #'
 #' @return A data.frame with columns:
 #' \describe{
 #'   \item{text_id}{Integer index}
 #'   \item{text}{Original text (truncated)}
-#'   \item{prediction}{Predicted category}
+#'   \item{prediction}{Predicted category (or \code{NA})}
 #'   \item{confidence}{Confidence level: "high", "medium", or "low"}
 #'   \item{reasoning}{One-sentence explanation}
 #'   \item{evidence}{Key phrases from the text supporting the decision}
@@ -593,13 +815,13 @@ classify_judge <- function(texts, classes,
                            persona = "You are an expert personality psychologist acting as a text classifier.
 Your job is to carefully read personality descriptions and classify them into categories.
 You must provide reasoning for your classification, citing specific evidence from the text.",
-                           model = "llama-3.3-70b-versatile") {
+                           model = "llama-3.3-70b-versatile",
+                           chunk_size = 40, shuffle = TRUE, seed = 2026) {
+  classes <- as.character(classes)
 
-  client <- .get_groq_client()
-  all_texts <- .format_numbered_texts(texts)
-
-  prompt <- sprintf(
-    'Classify each numbered personality description into ONE of these categories: %s
+  chunk_fun <- function(x) {
+    prompt <- sprintf(
+      'Classify each numbered personality description into ONE of these categories: %s
 
 %s
 
@@ -614,49 +836,31 @@ Return a JSON object with text numbers as keys:
   "1": {"evidence": ["phrase1", "phrase2"], "reasoning": "...", "category": "...", "confidence": "high"}
 }
 Return ONLY valid JSON.',
-    paste(classes, collapse = ", "), all_texts
-  )
-
-  response <- client$chat$completions$create(
-    model = model,
-    messages = list(
-      list("role" = "system", "content" = persona),
-      list("role" = "user", "content" = prompt)
-    ),
-    temperature = 0.0,
-    max_tokens = as.integer(length(texts) * 120),
-    response_format = list("type" = "json_object")
-  )
-
-  results <- jsonlite::fromJSON(response$choices[[1]]$message$content)
-
-  predictions <- character(length(texts))
-  confidence <- character(length(texts))
-  reasoning <- character(length(texts))
-  evidence <- character(length(texts))
-
-  for (i in seq_along(texts)) {
-    entry <- results[[as.character(i)]]
-    predictions[i] <- tolower(entry$category)
-    confidence[i] <- tolower(entry$confidence)
-    reasoning[i] <- entry$reasoning
-    ev <- entry$evidence
-    if (!is.null(ev) && length(ev) > 0) {
-      evidence[i] <- paste(ev, collapse = "; ")
-    } else {
-      evidence[i] <- NA_character_
-    }
+      paste(classes, collapse = ", "), .format_numbered_texts(x)
+    )
+    content <- .groq_chat(prompt, model = model, system = persona,
+                          max_tokens = length(x) * 120L + 200L,
+                          response_format = list(type = "json_object"))
+    results <- .parse_json(content)
+    get <- function(field) vapply(seq_along(x), function(i) {
+      .get_string(results, i, field)
+    }, character(1))
+    evidence <- vapply(seq_along(x), function(i) .get_string(results, i, "evidence"),
+                       character(1))
+    data.frame(prediction = normalize_labels(get("category"), classes),
+               confidence = normalize_labels(get("confidence"), c("high", "medium", "low")),
+               reasoning = get("reasoning"),
+               evidence = evidence,
+               stringsAsFactors = FALSE)
   }
 
-  data.frame(
-    text_id = seq_along(texts),
-    text = substr(texts, 1, 200),
-    prediction = predictions,
-    confidence = confidence,
-    reasoning = reasoning,
-    evidence = evidence,
-    stringsAsFactors = FALSE
-  )
+  res <- .batch_classify(texts, chunk_fun, chunk_size, shuffle, seed,
+                         template = data.frame(prediction = NA_character_,
+                                               confidence = NA_character_,
+                                               reasoning = NA_character_,
+                                               evidence = NA_character_))
+  .report_invalid(res$prediction)
+  .with_text_cols(texts, res)
 }
 
 
@@ -670,7 +874,14 @@ Return ONLY valid JSON.',
 #' @param model Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.
 #' @param temperature Creativity parameter (0 = deterministic, 1 = creative).
 #'   Default is \code{0.3}.
-#' @param max_tokens Maximum response length. Default is \code{500}.
+#' @param max_tokens Maximum response length (sent as
+#'   \code{max_completion_tokens}). Default is \code{500}. Reasoning models
+#'   get 2,000 extra tokens to think.
+#' @param ... Additional arguments for the Groq chat completions API, for
+#'   example \code{top_p}, \code{stop}, or the built-in browser tool of
+#'   \code{openai/gpt-oss-120b}: \code{tools = list(list(type = "browser_search"))}
+#'   with \code{tool_choice = "required"}. They override the package defaults
+#'   (e.g., \code{reasoning_effort = "medium"}).
 #'
 #' @return A character string containing the model's response.
 #'
@@ -685,29 +896,27 @@ Return ONLY valid JSON.',
 #'   system_prompt = "You are an expert psychometrician.",
 #'   temperature = 0.4
 #' )
+#'
+#' # With web browsing (gpt-oss models on Groq)
+#' llm_generate(
+#'   prompt = paste("Summarize in 2-3 sentences one news story about AI published",
+#'                  "in the last 5 days (today is", format(Sys.Date(), "%B %d, %Y"), ")."),
+#'   model = "openai/gpt-oss-120b", temperature = 1, max_tokens = 2048L,
+#'   tools = list(list(type = "browser_search")), tool_choice = "required"
+#' )
 #' }
 #'
+#' @seealso \code{\link{generate_labeled_texts}}
 #' @export
 llm_generate <- function(prompt,
                          system_prompt = NULL,
                          model = "llama-3.3-70b-versatile",
                          temperature = 0.3,
-                         max_tokens = 500L) {
-
-  client <- .get_groq_client()
-
-  messages <- list()
-  if (!is.null(system_prompt)) {
-    messages <- c(messages, list(list("role" = "system", "content" = system_prompt)))
-  }
-  messages <- c(messages, list(list("role" = "user", "content" = prompt)))
-
-  response <- client$chat$completions$create(
-    model = model,
-    messages = messages,
-    temperature = temperature,
-    max_tokens = as.integer(max_tokens)
-  )
-
-  response$choices[[1]]$message$content
+                         max_tokens = 500L,
+                         ...) {
+  out <- .groq_chat(prompt, model = model, system = system_prompt,
+                    temperature = temperature, max_tokens = as.integer(max_tokens),
+                    extra = list(...))
+  attr(out, "usage") <- NULL
+  out
 }

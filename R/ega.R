@@ -13,7 +13,9 @@
 #'   \code{"LE"}.
 #' @param optimize_steps Logical. If \code{TRUE} (default is \code{FALSE}), uses
 #'   \code{EGA.fit} to search for the optimal number of walktrap steps (2-25),
-#'   which can improve community detection but takes longer.
+#'   which can improve community detection but takes longer. \code{EGA.fit}
+#'   chooses the steps with the lowest Total Entropy Fit Index (TEFI), so the
+#'   true labels are never used.
 #' @param steps_range Integer vector of walktrap steps to try when
 #'   \code{optimize_steps = TRUE}. Default is \code{2:25}.
 #' @param plot Logical. Whether to plot the EGA network. Default is \code{TRUE}.
@@ -36,15 +38,19 @@
 #' result <- ega_classify(embeddings)
 #' table(result$communities)
 #'
-#' # Compare with true labels
-#' aricode::NMI(extraversion$subtopic, result$communities)
+#' # Compare with true labels (texts left unassigned count as disagreements)
+#' compute_nmi(extraversion$subtopic, result$communities)
 #'
-#' # With walktrap optimization
+#' # With walktrap optimization (chosen by TEFI, not by the labels)
 #' result_opt <- ega_classify(embeddings, optimize_steps = TRUE)
-#' aricode::NMI(extraversion$subtopic, result_opt$communities)
+#' compute_nmi(extraversion$subtopic, result_opt$communities)
+#'
+#' # Supervised counterpart: a linear head on the same embeddings
+#' linear_probe(embeddings, extraversion$subtopic)
 #' }
 #'
-#' @seealso \code{\link{prime_weight_encode}}, \code{\link{embed_voyage}}
+#' @seealso \code{\link{prime_weight_encode}}, \code{\link{embed_voyage}},
+#'   \code{\link{compute_nmi}}, \code{\link{probe_layers}}
 #'
 #' @export
 ega_classify <- function(embeddings,
@@ -89,7 +95,7 @@ ega_classify <- function(embeddings,
 
   list(
     communities = communities,
-    n_communities = length(unique(communities)),
+    n_communities = length(unique(communities[!is.na(communities)])),
     TEFI = ega_obj$TEFI,
     ega_object = ega_obj
   )
@@ -112,16 +118,27 @@ ega_classify <- function(embeddings,
 #' @param uni_method Unidimensionality method for EGA. Default is \code{"expand"}.
 #' @param steps_range Integer vector of walktrap steps to search. Default
 #'   is \code{2:25}.
+#' @param true_labels Optional vector of true labels. If given, the NMI of
+#'   every walktrap step is added to \code{step_results} (column \code{NMI})
+#'   for teaching and diagnostics. The chosen step never uses the labels.
 #'
 #' @return A list with:
 #' \describe{
-#'   \item{best_communities}{Community assignments at the best walktrap step}
-#'   \item{best_nmi}{Best NMI across walktrap steps (if \code{true_labels} was provided)}
-#'   \item{best_step}{Optimal walktrap step count}
-#'   \item{step_results}{Data.frame of communities per step}
+#'   \item{best_communities}{Community assignments at the chosen walktrap step}
+#'   \item{best_step}{Chosen walktrap step: the first step giving the most
+#'     frequent number of communities across \code{steps_range} (label-free)}
+#'   \item{n_communities}{Number of communities at the chosen step}
+#'   \item{step_results}{Data.frame with the number of communities (and the
+#'     NMI, if \code{true_labels} was given) per step}
+#'   \item{all_communities}{List of community assignments for every step}
 #'   \item{encoding_matrix}{The combined prime-weight encoded network}
 #'   \item{layer_egas}{List of per-layer EGA results}
 #' }
+#'
+#' @section Caution:
+#' Picking the step with the highest NMI (\code{step_results$NMI}) uses the
+#' true labels, so that NMI is an optimistic upper bound, not an
+#' unsupervised result. Report the label-free \code{best_communities}.
 #'
 #' @details
 #' The algorithm:
@@ -147,7 +164,11 @@ ega_classify <- function(embeddings,
 #' table(pw$best_communities)
 #'
 #' # Compare with true labels
-#' aricode::NMI(extraversion$subtopic, pw$best_communities)
+#' compute_nmi(extraversion$subtopic, pw$best_communities)
+#'
+#' # NMI of every walktrap step (diagnostic only: uses the labels)
+#' pw2 <- prime_weight_encode(emb$layers, true_labels = extraversion$subtopic)
+#' pw2$step_results
 #'
 #' # Add Voyage AI embeddings as extra "layer"
 #' voyage_emb <- embed_voyage(extraversion$text)
@@ -161,7 +182,8 @@ ega_classify <- function(embeddings,
 prime_weight_encode <- function(layers,
                                 model = "tmfg",
                                 uni_method = "expand",
-                                steps_range = 2:25) {
+                                steps_range = 2:25,
+                                true_labels = NULL) {
 
   if (!requireNamespace("EGAnet", quietly = TRUE)) {
     stop("Package 'EGAnet' is required. Install with: install.packages('EGAnet')",
@@ -232,8 +254,13 @@ prime_weight_encode <- function(layers,
     all_communities[[as.character(step)]] <- as.vector(wc)
     step_results <- rbind(step_results, data.frame(
       steps = step,
-      n_communities = length(unique(wc))
+      n_communities = length(unique(wc[!is.na(wc)]))
     ))
+  }
+  if (!is.null(true_labels)) {
+    step_results$NMI <- vapply(all_communities, function(wc) {
+      compute_nmi(true_labels, wc)
+    }, numeric(1))
   }
 
   # Use the step with the most common number of communities

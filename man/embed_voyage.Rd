@@ -4,46 +4,72 @@
 \alias{embed_voyage}
 \title{Get Voyage AI embeddings}
 \usage{
-embed_voyage(texts, model = "voyage-3.5", input_type = "document")
+embed_voyage(
+  texts,
+  model = "voyage-4",
+  input_type = "document",
+  output_dimension = NULL,
+  batch_size = 128L
+)
 }
 \arguments{
 \item{texts}{Character vector of texts to embed.}
 
-\item{model}{Voyage AI model name. Default is \code{"voyage-3.5"}.}
+\item{model}{Voyage AI model name. Default is \code{"voyage-4"}. Other
+options: \code{"voyage-4-large"}, \code{"voyage-4-lite"},
+\code{"voyage-3.5"} (previous default).}
 
-\item{input_type}{Either \code{"document"} (for texts to be stored/searched)
-or \code{"query"} (for search queries). Default is \code{"document"}.}
+\item{input_type}{Either \code{"document"} (for texts to be stored or
+classified) or \code{"query"} (for search queries). Default is
+\code{"document"}.}
+
+\item{output_dimension}{Optional embedding size: \code{256}, \code{512},
+\code{1024} (default of the model) or \code{2048}. \code{NULL} (default)
+uses the model default.}
+
+\item{batch_size}{Number of texts per API call. Default is \code{128}.}
 }
 \value{
 A numeric matrix with \code{length(texts)} rows and \code{d}
-columns (e.g., 1024 for voyage-3.5).
+columns (e.g., 1024 for voyage-4).
 }
 \description{
 Embeds texts using the Voyage AI API. Returns a numeric matrix where each
-row is a text and each column is an embedding dimension. Voyage AI's
-\code{voyage-3.5} model produces 1024-dimensional embeddings.
+row is a text and each column is an embedding dimension. The default
+\code{voyage-4} model (January 2026) produces 1024-dimensional embeddings;
+\code{voyage-4-large} and \code{voyage-4-lite} share the same embedding
+space.
 }
 \details{
-Voyage AI's free tier allows 100M tokens/month, which is more than enough
-for typical course activities. The API supports up to 128 texts per call.
+Embeddings of documents and queries must come from the same model family
+(e.g., do not compare voyage-3.5 documents with voyage-4 queries).
+Voyage AI offers a free token allowance for new accounts, more than enough
+for the course activities.
 }
 \examples{
 \dontrun{
 data(extraversion)
 activate_llm_env()
-set_voyage_key("your-key")
+set_voyage_key()   # reads VOYAGE_API_KEY from ~/.Renviron
 
 # Embed all documents
 embeddings <- embed_voyage(extraversion$text)
 dim(embeddings)  # 120 x 1024
 
+# Smaller vectors (Matryoshka): faster EGA, less memory
+emb_256 <- embed_voyage(extraversion$text, output_dimension = 256)
+
 # Compute pairwise cosine similarities
 sim_matrix <- cosine_similarity_matrix(embeddings)
+
+# Supervised check: how well can a linear head read the facets?
+linear_probe(embeddings, extraversion$subtopic)
 }
 
 }
 \seealso{
-\code{\link{embed_local}}, \code{\link{retrieve_similar}}
+\code{\link{embed_local}}, \code{\link{embed_sentences}},
+\code{\link{retrieve_similar}}
 }
 \author{
 Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}

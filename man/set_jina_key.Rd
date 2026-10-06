@@ -4,10 +4,11 @@
 \alias{set_jina_key}
 \title{Set Jina AI API key}
 \usage{
-set_jina_key(key)
+set_jina_key(key = Sys.getenv("JINA_API_KEY"))
 }
 \arguments{
-\item{key}{Your Jina AI API key as a character string.}
+\item{key}{Your Jina AI API key as a character string. Defaults to the
+\code{JINA_API_KEY} environment variable (see \code{\link{set_groq_key}}).}
 }
 \value{
 Invisible \code{NULL}.
@@ -19,7 +20,7 @@ free key at \url{https://jina.ai/embeddings/}.
 }
 \examples{
 \dontrun{
-set_jina_key("jina_abc123...")
+set_jina_key()   # reads JINA_API_KEY from ~/.Renviron
 }
 
 }

@@ -2,14 +2,26 @@
 % Please edit documentation in R/setup.R
 \name{setup_llm_env}
 \alias{setup_llm_env}
-\title{Set up the Python environment for textLLM}
+\title{Set up the Python environment for llmClassificR}
 \usage{
-setup_llm_env(env_name = "llm_env", python_version = "3.11")
+setup_llm_env(
+  env_name = "llm_env",
+  python_version = "3.11",
+  modernbert = FALSE
+)
 }
 \arguments{
 \item{env_name}{Name of the virtual environment. Default is \code{"llm_env"}.}
 
 \item{python_version}{Python version to install. Default is \code{"3.11"}.}
+
+\item{modernbert}{Logical. If \code{TRUE}, installs transformers 4.48.3,
+the first version that supports ModernBERT
+(\code{"answerdotai/ModernBERT-base"}), still with PyTorch 2.2.2. Use it
+for a separate, optional environment, e.g.
+\code{setup_llm_env("modernbert_env", modernbert = TRUE)}, and activate it
+with \code{activate_llm_env("modernbert_env")} in a fresh R session.
+Default \code{FALSE}.}
 }
 \value{
 Invisible \code{NULL}. Prints installation progress.
@@ -28,6 +40,9 @@ This function:
 \item Installs supporting packages (numpy, safetensors, etc.)
 }
 
+Jev (\code{\link{jev_classify}}) and Jina AI (\code{\link{embed_jina}}) are
+called from pure R and do not need this environment.
+
 UV must be installed first. See \url{https://docs.astral.sh/uv/} for
 installation instructions.
 }
@@ -38,6 +53,9 @@ setup_llm_env()
 
 # Custom environment name
 setup_llm_env(env_name = "my_env")
+
+# Optional second environment for ModernBERT
+setup_llm_env(env_name = "modernbert_env", modernbert = TRUE)
 }
 
 }

@@ -4,7 +4,7 @@
 \alias{retrieve_similar}
 \title{Retrieve similar documents}
 \usage{
-retrieve_similar(query, doc_embeddings, texts, top_k = 10)
+retrieve_similar(query, doc_embeddings, texts, top_k = 10, model = "voyage-4")
 }
 \arguments{
 \item{query}{A character string (the search query).}
@@ -15,6 +15,10 @@ as returned by \code{\link{embed_voyage}}.}
 \item{texts}{Character vector of original texts (same order as embeddings).}
 
 \item{top_k}{Number of documents to retrieve. Default is \code{10}.}
+
+\item{model}{Voyage AI model used to embed the query. It must be the model
+(family) used for \code{doc_embeddings}. Default is \code{"voyage-4"},
+the default of \code{\link{embed_voyage}}.}
 }
 \value{
 A list with:

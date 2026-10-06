@@ -9,7 +9,10 @@ classify_judge(
   classes,
   persona =
     "You are an expert personality psychologist acting as a text classifier.\\nYour job is to carefully read personality descriptions and classify them into categories.\\nYou must provide reasoning for your classification, citing specific evidence from the text.",
-  model = "llama-3.3-70b-versatile"
+  model = "llama-3.3-70b-versatile",
+  chunk_size = 40,
+  shuffle = TRUE,
+  seed = 2026
 )
 }
 \arguments{
@@ -20,14 +23,23 @@ classify_judge(
 \item{persona}{Character string describing the expert persona for the
 system prompt. Default is a personality psychologist.}
 
-\item{model}{Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.}
+\item{model}{Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.
+See \code{\link{list_models}} for options.}
+
+\item{chunk_size}{Number of texts per API call. Default \code{40};
+\code{NULL} sends all texts in one call.}
+
+\item{shuffle}{Logical. Shuffle the texts before chunking (results are
+returned in the original order). Default \code{TRUE}.}
+
+\item{seed}{Seed for the shuffle. Default \code{2026}.}
 }
 \value{
 A data.frame with columns:
 \describe{
 \item{text_id}{Integer index}
 \item{text}{Original text (truncated)}
-\item{prediction}{Predicted category}
+\item{prediction}{Predicted category (or \code{NA})}
 \item{confidence}{Confidence level: "high", "medium", or "low"}
 \item{reasoning}{One-sentence explanation}
 \item{evidence}{Key phrases from the text supporting the decision}
@@ -39,6 +51,25 @@ reasoning for each classification decision. This creates an audit trail
 suitable for qualitative research, where you need to justify why each
 text was assigned to a category.
 }
+\section{Batch settings}{
+
+\describe{
+\item{\code{chunk_size}}{Texts per API call. Default \code{40}. Use
+\code{NULL} to send all texts in one call.}
+\item{\code{shuffle}}{Shuffle texts before chunking, so texts sorted by
+label do not bias the model. Results are returned in the original
+order. Default \code{TRUE}.}
+\item{\code{seed}}{Seed for the shuffle (the global random state is
+restored). Default \code{2026}.}
+}
+Answers are mapped to \code{classes} ignoring case and punctuation (see
+\code{\link{normalize_labels}}); invalid or missing answers are \code{NA}.
+If a whole chunk fails (for example, invalid JSON), its texts get \code{NA}
+and a warning is shown. The pause between chunks is
+\code{getOption("llmClassificR.pause", 2)} seconds; set
+\code{options(llmClassificR.verbose = FALSE)} to hide the progress messages.
+}
+
 \examples{
 \dontrun{
 data(extraversion)

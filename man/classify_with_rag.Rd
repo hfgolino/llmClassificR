@@ -8,7 +8,8 @@ classify_with_rag(
   texts,
   n_topics = 4,
   embeddings = NULL,
-  model = "llama-3.3-70b-versatile"
+  model = "openai/gpt-oss-120b",
+  embed_model = "voyage-4"
 )
 }
 \arguments{
@@ -19,6 +20,8 @@ classify_with_rag(
 \item{embeddings}{Optional pre-computed embedding matrix.}
 
 \item{model}{Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.}
+
+\item{embed_model}{Voyage AI model for embeddings. Default \code{"voyage-4"}.}
 }
 \value{
 A list with:
@@ -31,7 +34,7 @@ A list with:
 \description{
 End-to-end pipeline that embeds documents, discovers topics via RAG, and
 classifies all texts into the discovered categories. This is a fully
-unsupervised approach — no prior labels needed.
+unsupervised approach: no prior labels needed.
 }
 \examples{
 \dontrun{
@@ -46,8 +49,8 @@ print(pipeline$topics)
 # View classification results
 table(pipeline$classifications$prediction)
 
-# Compare with true labels (if available)
-aricode::NMI(extraversion$subtopic, pipeline$classifications$prediction)
+# Compare with true labels (NMI works although topic names differ)
+compute_nmi(extraversion$subtopic, pipeline$classifications$prediction)
 }
 
 }

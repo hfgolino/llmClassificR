@@ -5,7 +5,9 @@
 \alias{personality_descriptions}
 \title{Big Five Personality Description Texts}
 \format{
-A 110x2 data frame (text, Personality)
+A 110x2 data frame (text, Personality). The trait "Openness" is
+spelled "Openess" in the \code{Personality} column. Texts start with a
+space; use \code{trimws()} if needed.
 }
 \usage{
 data(personality_descriptions)

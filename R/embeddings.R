@@ -1,20 +1,31 @@
 #' Get Voyage AI embeddings
 #'
 #' Embeds texts using the Voyage AI API. Returns a numeric matrix where each
-#' row is a text and each column is an embedding dimension. Voyage AI's
-#' \code{voyage-3.5} model produces 1024-dimensional embeddings.
+#' row is a text and each column is an embedding dimension. The default
+#' \code{voyage-4} model (January 2026) produces 1024-dimensional embeddings;
+#' \code{voyage-4-large} and \code{voyage-4-lite} share the same embedding
+#' space.
 #'
 #' @param texts Character vector of texts to embed.
-#' @param model Voyage AI model name. Default is \code{"voyage-3.5"}.
-#' @param input_type Either \code{"document"} (for texts to be stored/searched)
-#'   or \code{"query"} (for search queries). Default is \code{"document"}.
+#' @param model Voyage AI model name. Default is \code{"voyage-4"}. Other
+#'   options: \code{"voyage-4-large"}, \code{"voyage-4-lite"},
+#'   \code{"voyage-3.5"} (previous default).
+#' @param input_type Either \code{"document"} (for texts to be stored or
+#'   classified) or \code{"query"} (for search queries). Default is
+#'   \code{"document"}.
+#' @param output_dimension Optional embedding size: \code{256}, \code{512},
+#'   \code{1024} (default of the model) or \code{2048}. \code{NULL} (default)
+#'   uses the model default.
+#' @param batch_size Number of texts per API call. Default is \code{128}.
 #'
 #' @return A numeric matrix with \code{length(texts)} rows and \code{d}
-#'   columns (e.g., 1024 for voyage-3.5).
+#'   columns (e.g., 1024 for voyage-4).
 #'
 #' @details
-#' Voyage AI's free tier allows 100M tokens/month, which is more than enough
-#' for typical course activities. The API supports up to 128 texts per call.
+#' Embeddings of documents and queries must come from the same model family
+#' (e.g., do not compare voyage-3.5 documents with voyage-4 queries).
+#' Voyage AI offers a free token allowance for new accounts, more than enough
+#' for the course activities.
 #'
 #' @author Hudson Golino <hfg9s at virginia.edu>
 #'
@@ -22,32 +33,47 @@
 #' \dontrun{
 #' data(extraversion)
 #' activate_llm_env()
-#' set_voyage_key("your-key")
+#' set_voyage_key()   # reads VOYAGE_API_KEY from ~/.Renviron
 #'
 #' # Embed all documents
 #' embeddings <- embed_voyage(extraversion$text)
 #' dim(embeddings)  # 120 x 1024
 #'
+#' # Smaller vectors (Matryoshka): faster EGA, less memory
+#' emb_256 <- embed_voyage(extraversion$text, output_dimension = 256)
+#'
 #' # Compute pairwise cosine similarities
 #' sim_matrix <- cosine_similarity_matrix(embeddings)
+#'
+#' # Supervised check: how well can a linear head read the facets?
+#' linear_probe(embeddings, extraversion$subtopic)
 #' }
 #'
-#' @seealso \code{\link{embed_local}}, \code{\link{retrieve_similar}}
+#' @seealso \code{\link{embed_local}}, \code{\link{embed_sentences}},
+#'   \code{\link{retrieve_similar}}
 #'
 #' @export
 embed_voyage <- function(texts,
-                         model = "voyage-3.5",
-                         input_type = "document") {
+                         model = "voyage-4",
+                         input_type = "document",
+                         output_dimension = NULL,
+                         batch_size = 128L) {
 
   vo <- .get_voyageai()
+  texts <- as.character(texts)
+  starts <- seq(1, length(texts), by = batch_size)
 
-  result <- vo$embed(
-    texts = texts,
-    model = model,
-    input_type = input_type
-  )
+  all_embeddings <- list()
+  for (b in seq_along(starts)) {
+    idx <- starts[b]:min(starts[b] + batch_size - 1, length(texts))
+    if (length(starts) > 1) cat("  Batch", b, "of", length(starts), "\n")
+    args <- list(texts = as.list(texts[idx]), model = model, input_type = input_type)
+    if (!is.null(output_dimension)) args$output_dimension <- as.integer(output_dimension)
+    result <- do.call(vo$embed, args)
+    all_embeddings <- c(all_embeddings, lapply(result$embeddings, unlist))
+  }
 
-  embed_matrix <- do.call(rbind, result$embeddings)
+  embed_matrix <- do.call(rbind, all_embeddings)
   rownames(embed_matrix) <- paste0("text_", seq_along(texts))
   colnames(embed_matrix) <- paste0("dim_", seq_len(ncol(embed_matrix)))
 
@@ -251,8 +277,9 @@ list_jina_models <- function() {
       "Accept" = "application/json"
     ) |>
     httr2::req_body_json(body) |>
+    httr2::req_retry(max_tries = 4) |>   # retries 429 and 503 automatically
     httr2::req_error(body = function(resp) {
-      parsed <- httr2::resp_body_json(resp)
+      parsed <- tryCatch(httr2::resp_body_json(resp), error = function(e) list())
       paste0(parsed$detail %||% "Unknown error")
     }) |>
     httr2::req_perform()
@@ -278,8 +305,18 @@ list_jina_models <- function() {
 #' @param model_name HuggingFace model identifier. Default is \code{"roberta-base"}.
 #'   Other options: \code{"bert-base-uncased"}, \code{"microsoft/deberta-v3-base"},
 #'   \code{"albert-base-v2"}, \code{"google/electra-base-discriminator"},
-#'   \code{"answerdotai/ModernBERT-base"}.
+#'   \code{"answerdotai/ModernBERT-base"} (22 layers, 8,192-token context; needs
+#'   the environment created with \code{setup_llm_env(modernbert = TRUE)}).
 #' @param max_length Maximum token length for truncation. Default is \code{128}.
+#' @param isolate Logical. Run the extraction in a separate background R
+#'   process (default \code{TRUE}, needs the \pkg{callr} package). PyTorch
+#'   loads native libraries that can clash with libraries already loaded in a
+#'   long R session and crash it ("R Session Aborted" in RStudio, mostly on
+#'   macOS). In a separate process such a crash cannot take your session
+#'   down: you get an ordinary R error with the real cause instead. The
+#'   background process uses the Python environment activated with
+#'   \code{\link{activate_llm_env}}. Set \code{isolate = FALSE} to run in the
+#'   current session (slightly faster).
 #'
 #' @return A list with:
 #' \describe{
@@ -300,9 +337,12 @@ list_jina_models <- function() {
 #'
 #' @examples
 #' \dontrun{
+#' library(llmClassificR)
+#' activate_llm_env()
 #' data(extraversion)
 #'
-#' # Extract from BERT
+#' # Extract from BERT (in a background R process, so a PyTorch crash
+#' # cannot abort your session)
 #' emb <- embed_local(extraversion$text, model_name = "bert-base-uncased")
 #' cat("Layers:", emb$num_layers, "| Hidden size:", emb$hidden_size, "\n")
 #'
@@ -310,14 +350,31 @@ list_jina_models <- function() {
 #' layer_quality <- evaluate_layers(emb$layers, extraversion$subtopic)
 #' best <- which.max(layer_quality$combined_score)
 #' best_embeddings <- emb$layers[[best]]
+#'
+#' # Unsupervised (EGA) vs. supervised (linear probe) view of every layer
+#' probe_layers(emb$layers, extraversion$subtopic, ega = TRUE)
+#'
+#' # ModernBERT (in a fresh R session)
+#' # activate_llm_env("modernbert_env")
+#' # emb_mb <- embed_local(extraversion$text, "answerdotai/ModernBERT-base")
 #' }
 #'
-#' @seealso \code{\link{embed_voyage}}, \code{\link{evaluate_layers}}
+#' @seealso \code{\link{embed_voyage}}, \code{\link{evaluate_layers}},
+#'   \code{\link{probe_layers}}, \code{\link{embed_sentences}}
 #'
 #' @export
 embed_local <- function(texts,
                         model_name = "roberta-base",
-                        max_length = 128L) {
+                        max_length = 128L,
+                        isolate = TRUE) {
+
+  if (isolate) {
+    if (requireNamespace("callr", quietly = TRUE)) {
+      return(.embed_local_isolated(texts, model_name, max_length))
+    }
+    message("Package 'callr' is not installed: running embed_local() in this session ",
+            "(install.packages('callr') to run it in a separate process).")
+  }
 
   transformers <- reticulate::import("transformers")
   torch <- reticulate::import("torch")
@@ -348,28 +405,27 @@ embed_local <- function(texts,
   for (i in seq_along(texts)) {
     if (i %% 20 == 0) cat("  Processing text", i, "of", length(texts), "\n")
 
+    # One text at a time: no padding needed (padding tokens are masked anyway)
     inputs <- tokenizer(
       texts[i],
       return_tensors = "pt",
       truncation = TRUE,
-      padding = "max_length",
       max_length = as.integer(max_length)
     )
 
+    # Mean-pool EVERY layer inside torch and bring ONE matrix back to R
+    # (layers x hidden_size), instead of one small conversion per layer
     with(torch$no_grad(), {
-      outputs <- model(inputs$input_ids, attention_mask = inputs$attention_mask)
+      outputs <- model(input_ids = inputs$input_ids,
+                       attention_mask = inputs$attention_mask)
+      hs <- torch$stack(outputs$hidden_states)                    # [layers, 1, tokens, hidden]
+      mask <- inputs$attention_mask$unsqueeze(-1L)$to(hs$dtype)   # [1, tokens, 1]
+      pooled <- (hs * mask)$sum(dim = 2L) / mask$sum()            # [layers, 1, hidden]
+      pooled <- pooled$squeeze(1L)$cpu()$numpy()                  # layers x hidden (R matrix)
     })
 
-    hidden_states <- outputs$hidden_states
-
-    for (layer_idx in seq_along(hidden_states)) {
-      layer_output <- hidden_states[[layer_idx]]
-      attention_mask <- inputs$attention_mask$unsqueeze(-1L)$expand(layer_output$size())
-      masked_output <- layer_output * attention_mask$float()
-      summed <- torch$sum(masked_output, dim = 1L)
-      counts <- torch$sum(attention_mask$float(), dim = 1L)
-      mean_pooled <- summed / counts
-      all_layer_embeddings[[layer_idx]][i, ] <- mean_pooled$numpy()[1, ]
+    for (layer_idx in seq_along(all_layer_embeddings)) {
+      all_layer_embeddings[[layer_idx]][i, ] <- pooled[layer_idx, ]
     }
   }
   cat("Extraction complete!\n")
@@ -397,6 +453,63 @@ embed_local <- function(texts,
     num_layers = num_layers,
     hidden_size = hidden_size
   )
+}
+
+
+#' Run embed_local() in a background R process (internal)
+#'
+#' The child process starts clean (no other native libraries loaded), uses
+#' the same Python interpreter, and sends the embeddings back. If PyTorch
+#' crashes there, the error (including the child's last messages) is
+#' reported here and the user's session keeps running.
+#' @noRd
+.embed_local_isolated <- function(texts, model_name, max_length) {
+  py <- .pkg_env$python
+  if (is.null(py)) {
+    stop("Run activate_llm_env() first (embed_local() needs the Python environment).",
+         call. = FALSE)
+  }
+  child <- function(texts, model_name, max_length, py) {
+    Sys.setenv(TOKENIZERS_PARALLELISM = "false")
+    if (Sys.info()[["sysname"]] == "Darwin" && !nzchar(Sys.getenv("KMP_DUPLICATE_LIB_OK"))) {
+      Sys.setenv(KMP_DUPLICATE_LIB_OK = "TRUE")
+    }
+    reticulate::use_python(py, required = TRUE)
+    # Plain R errors only: Python exception objects cannot be sent back
+    tryCatch(
+      llmClassificR::embed_local(texts, model_name = model_name,
+                                 max_length = max_length, isolate = FALSE),
+      error = function(e) stop(conditionMessage(e), call. = FALSE)
+    )
+  }
+  cat("Running embed_local() in a background R process (isolate = TRUE)...\n")
+  res <- tryCatch(
+    callr::r(child,
+             args = list(texts = as.character(texts), model_name = model_name,
+                         max_length = as.integer(max_length), py = py),
+             show = TRUE, spinner = FALSE),
+    error = function(e) {
+      details <- tryCatch(e$stderr, error = function(err) NULL)
+      if (length(details) == 1 && nzchar(details)) {
+        lines <- strsplit(details, "\n")[[1]]
+        details <- paste(utils::tail(lines[nzchar(lines)], 15), collapse = "\n")
+      } else {
+        details <- NULL
+      }
+      stop("embed_local() failed in its background R process (your R session is fine).\n",
+           conditionMessage(e),
+           if (!is.null(details)) paste0("\nLast messages from the background process:\n", details),
+           "\nIf PyTorch crashed (e.g., 'OMP: Error #15' or a segmentation fault), restart R, ",
+           "run library(llmClassificR) and activate_llm_env() first, and try again.",
+           call. = FALSE)
+    }
+  )
+  if (!is.list(res) || is.null(res$layers)) {
+    stop("embed_local() returned no embeddings from its background R process. ",
+         "Try embed_local(..., isolate = FALSE) to see the error in this session.",
+         call. = FALSE)
+  }
+  res
 }
 
 
@@ -468,9 +581,11 @@ evaluate_layers <- function(layers, labels) {
     sil <- cluster::silhouette(km$cluster, d)
     results$silhouette[l] <- mean(sil[, "sil_width"])
 
-    # 2. PCA explained variance
-    pca <- stats::prcomp(emb, center = TRUE, scale. = FALSE, rank. = 4)
-    results$explained_var[l] <- sum(pca$sdev^2) / sum(apply(emb, 2, stats::var))
+    # 2. PCA: proportion of variance explained by the first 4 components
+    # (prcomp's `rank.` does not shorten `sdev`, so select the first 4 here)
+    pca <- stats::prcomp(emb, center = TRUE, scale. = FALSE)
+    results$explained_var[l] <- sum(pca$sdev[seq_len(min(4, length(pca$sdev)))]^2) /
+      sum(pca$sdev^2)
 
     # 3. Within vs between class distance ratio
     unique_labels <- unique(labels)

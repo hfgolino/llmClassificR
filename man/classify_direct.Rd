@@ -4,7 +4,14 @@
 \alias{classify_direct}
 \title{Direct zero-shot text classification}
 \usage{
-classify_direct(texts, classes, model = "llama-3.3-70b-versatile")
+classify_direct(
+  texts,
+  classes,
+  model = "openai/gpt-oss-120b",
+  chunk_size = 40,
+  shuffle = TRUE,
+  seed = 2026
+)
 }
 \arguments{
 \item{texts}{Character vector of texts to classify.}
@@ -13,25 +20,53 @@ classify_direct(texts, classes, model = "llama-3.3-70b-versatile")
 
 \item{model}{Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.
 See \code{\link{list_models}} for options.}
+
+\item{chunk_size}{Number of texts per API call. Default \code{40};
+\code{NULL} sends all texts in one call.}
+
+\item{shuffle}{Logical. Shuffle the texts before chunking (results are
+returned in the original order). Default \code{TRUE}.}
+
+\item{seed}{Seed for the shuffle. Default \code{2026}.}
 }
 \value{
 A data.frame with columns:
 \describe{
 \item{text_id}{Integer index of each text}
 \item{text}{The original text (truncated to 200 characters)}
-\item{prediction}{The predicted category}
+\item{prediction}{The predicted category (one of \code{classes}, or
+\code{NA} if the model gave no valid answer)}
 }
 }
 \description{
-Classifies texts into categories using a single LLM API call. This is the
-simplest and fastest classification approach: the model receives all texts
-and returns a category for each.
+Classifies texts into categories with a Groq LLM. This is the simplest and
+fastest classification approach: the model receives a numbered list of
+texts and returns one category for each, as JSON.
 }
+\section{Batch settings}{
+
+\describe{
+\item{\code{chunk_size}}{Texts per API call. Default \code{40}. Use
+\code{NULL} to send all texts in one call.}
+\item{\code{shuffle}}{Shuffle texts before chunking, so texts sorted by
+label do not bias the model. Results are returned in the original
+order. Default \code{TRUE}.}
+\item{\code{seed}}{Seed for the shuffle (the global random state is
+restored). Default \code{2026}.}
+}
+Answers are mapped to \code{classes} ignoring case and punctuation (see
+\code{\link{normalize_labels}}); invalid or missing answers are \code{NA}.
+If a whole chunk fails (for example, invalid JSON), its texts get \code{NA}
+and a warning is shown. The pause between chunks is
+\code{getOption("llmClassificR.pause", 2)} seconds; set
+\code{options(llmClassificR.verbose = FALSE)} to hide the progress messages.
+}
+
 \examples{
 \dontrun{
 data(extraversion)
 activate_llm_env()
-set_groq_key("your-key")
+set_groq_key()   # reads GROQ_API_KEY from ~/.Renviron
 
 results <- classify_direct(
   texts = extraversion$text,
@@ -39,14 +74,20 @@ results <- classify_direct(
 )
 head(results)
 
-# Compare with true labels
-table(True = extraversion$subtopic, Predicted = results$prediction)
+# Evaluate
+evaluate_classification(extraversion$subtopic, results$prediction, "Direct")
+table(True = extraversion$subtopic, Predicted = results$prediction, useNA = "ifany")
+
+# The 0.1.0 behavior: one call, texts in their original order
+results_one_call <- classify_direct(extraversion$text, unique(extraversion$subtopic),
+                                    chunk_size = NULL, shuffle = FALSE)
 }
 
 }
 \seealso{
 \code{\link{classify_fewshot}}, \code{\link{classify_cot}},
-\code{\link{classify_json}}, \code{\link{compare_methods}}
+\code{\link{classify_schema}}, \code{\link{evaluate_classification}},
+\code{\link{compare_methods}}
 }
 \author{
 Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}

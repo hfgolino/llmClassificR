@@ -4,7 +4,15 @@
 \alias{classify_fewshot}
 \title{Few-shot text classification}
 \usage{
-classify_fewshot(texts, classes, examples, model = "llama-3.3-70b-versatile")
+classify_fewshot(
+  texts,
+  classes,
+  examples,
+  model = "openai/gpt-oss-120b",
+  chunk_size = 40,
+  shuffle = TRUE,
+  seed = 2026
+)
 }
 \arguments{
 \item{texts}{Character vector of texts to classify.}
@@ -14,40 +22,65 @@ classify_fewshot(texts, classes, examples, model = "llama-3.3-70b-versatile")
 \item{examples}{A data.frame with columns \code{text} and \code{label},
 containing labeled examples (2-3 per class is typical).}
 
-\item{model}{Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.}
+\item{model}{Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.
+See \code{\link{list_models}} for options.}
+
+\item{chunk_size}{Number of texts per API call. Default \code{40};
+\code{NULL} sends all texts in one call.}
+
+\item{shuffle}{Logical. Shuffle the texts before chunking (results are
+returned in the original order). Default \code{TRUE}.}
+
+\item{seed}{Seed for the shuffle. Default \code{2026}.}
 }
 \value{
-A data.frame with columns:
-\describe{
-\item{text_id}{Integer index of each text}
-\item{text}{The original text (truncated to 200 characters)}
-\item{prediction}{The predicted category}
-}
+A data.frame with columns \code{text_id}, \code{text} and
+\code{prediction}.
 }
 \description{
 Classifies texts by providing labeled examples to guide the model. The
 model sees example text-label pairs before classifying the target texts.
 This often improves accuracy over direct zero-shot, especially for
-ambiguous categories.
+ambiguous categories. Never evaluate on the texts used as examples.
 }
+\section{Batch settings}{
+
+\describe{
+\item{\code{chunk_size}}{Texts per API call. Default \code{40}. Use
+\code{NULL} to send all texts in one call.}
+\item{\code{shuffle}}{Shuffle texts before chunking, so texts sorted by
+label do not bias the model. Results are returned in the original
+order. Default \code{TRUE}.}
+\item{\code{seed}}{Seed for the shuffle (the global random state is
+restored). Default \code{2026}.}
+}
+Answers are mapped to \code{classes} ignoring case and punctuation (see
+\code{\link{normalize_labels}}); invalid or missing answers are \code{NA}.
+If a whole chunk fails (for example, invalid JSON), its texts get \code{NA}
+and a warning is shown. The pause between chunks is
+\code{getOption("llmClassificR.pause", 2)} seconds; set
+\code{options(llmClassificR.verbose = FALSE)} to hide the progress messages.
+}
+
 \examples{
 \dontrun{
 data(extraversion)
 
-# Create examples: first 2 texts from each class
-examples <- do.call(rbind, lapply(unique(extraversion$subtopic), function(cls) {
-  idx <- which(extraversion$subtopic == cls)
-  data.frame(text = extraversion$text[idx[1:2]],
-             label = cls, stringsAsFactors = FALSE)
+# Examples: first 2 texts from each class
+example_idx <- unlist(lapply(unique(extraversion$subtopic), function(cls) {
+  head(which(extraversion$subtopic == cls), 2)
 }))
+examples <- data.frame(text = extraversion$text[example_idx],
+                       label = extraversion$subtopic[example_idx])
 
-# Classify the remaining texts
-test_idx <- setdiff(1:nrow(extraversion), which(extraversion$text \%in\% examples$text))
+# Classify (and evaluate) only the remaining texts
+test_idx <- setdiff(seq_len(nrow(extraversion)), example_idx)
 results <- classify_fewshot(
   texts = extraversion$text[test_idx],
   classes = unique(extraversion$subtopic),
   examples = examples
 )
+evaluate_classification(extraversion$subtopic[test_idx], results$prediction, "Few-shot")
 }
 
 }

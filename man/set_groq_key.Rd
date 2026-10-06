@@ -4,10 +4,18 @@
 \alias{set_groq_key}
 \title{Set Groq API key}
 \usage{
-set_groq_key(key)
+set_groq_key(key = Sys.getenv("GROQ_API_KEY"), max_retries = 5L)
 }
 \arguments{
-\item{key}{Your Groq API key as a character string.}
+\item{key}{Your Groq API key as a character string. Defaults to the
+\code{GROQ_API_KEY} environment variable. The recommended workflow is to
+store your keys in \code{~/.Renviron} (e.g., with
+\code{usethis::edit_r_environ()}), one per line
+(\code{GROQ_API_KEY=gsk_...}), restart R and call \code{set_groq_key()}
+with no arguments, so keys never appear in scripts you share.}
+
+\item{max_retries}{Number of automatic retries (with exponential backoff)
+for rate-limit (429) and server errors. Default is \code{5}.}
 }
 \value{
 Invisible \code{NULL}.
@@ -18,6 +26,10 @@ Groq client. Get a free key at \url{https://console.groq.com}.
 }
 \examples{
 \dontrun{
+# Recommended: key stored in ~/.Renviron as GROQ_API_KEY=gsk_...
+set_groq_key()
+
+# Or explicitly (avoid this in shared scripts)
 set_groq_key("gsk_abc123...")
 }
 

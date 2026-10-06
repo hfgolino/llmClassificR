@@ -7,7 +7,10 @@
 classify_ensemble(
   texts,
   classes,
-  models = c("llama-3.3-70b-versatile", "llama-3.1-8b-instant", "openai/gpt-oss-20b")
+  models = c("llama-3.3-70b-versatile", "llama-3.1-8b-instant", "openai/gpt-oss-20b"),
+  chunk_size = 40,
+  shuffle = TRUE,
+  seed = 2026
 )
 }
 \arguments{
@@ -16,8 +19,16 @@ classify_ensemble(
 \item{classes}{Character vector of possible category labels.}
 
 \item{models}{Character vector of Groq model names. Default uses three
-models: \code{llama-3.3-70b-versatile}, \code{llama-3.1-8b-instant},
-and \code{gemma2-9b-it}.}
+production models: \code{llama-3.3-70b-versatile},
+\code{llama-3.1-8b-instant} and \code{openai/gpt-oss-20b}.}
+
+\item{chunk_size}{Number of texts per API call. Default \code{40};
+\code{NULL} sends all texts in one call.}
+
+\item{shuffle}{Logical. Shuffle the texts before chunking (results are
+returned in the original order). Default \code{TRUE}.}
+
+\item{seed}{Seed for the shuffle. Default \code{2026}.}
 }
 \value{
 A data.frame with columns:
@@ -25,16 +36,33 @@ A data.frame with columns:
 \item{text_id}{Integer index}
 \item{text}{Original text (truncated)}
 \item{prediction}{Majority vote prediction}
-\item{agreement}{Logical: did all models agree?}
+\item{agreement}{Logical: did all models with a valid answer agree?}
 \item{votes}{Comma-separated individual model predictions}
 }
 }
 \description{
-Classifies texts using multiple LLM models and takes a majority vote.
-Each model classifies all texts in a single batch call, then predictions
-are combined via majority vote. This approach is more robust than any
-single model.
+Classifies texts with several LLMs (each with \code{\link{classify_direct}})
+and takes a majority vote. Ties are broken by the order of \code{models}.
 }
+\section{Batch settings}{
+
+\describe{
+\item{\code{chunk_size}}{Texts per API call. Default \code{40}. Use
+\code{NULL} to send all texts in one call.}
+\item{\code{shuffle}}{Shuffle texts before chunking, so texts sorted by
+label do not bias the model. Results are returned in the original
+order. Default \code{TRUE}.}
+\item{\code{seed}}{Seed for the shuffle (the global random state is
+restored). Default \code{2026}.}
+}
+Answers are mapped to \code{classes} ignoring case and punctuation (see
+\code{\link{normalize_labels}}); invalid or missing answers are \code{NA}.
+If a whole chunk fails (for example, invalid JSON), its texts get \code{NA}
+and a warning is shown. The pause between chunks is
+\code{getOption("llmClassificR.pause", 2)} seconds; set
+\code{options(llmClassificR.verbose = FALSE)} to hide the progress messages.
+}
+
 \examples{
 \dontrun{
 data(extraversion)
@@ -44,14 +72,13 @@ results <- classify_ensemble(
   classes = unique(extraversion$subtopic)
 )
 
-# How often do all models agree?
+# How often do all models agree? Are unanimous votes more accurate?
 mean(results$agreement)
-
-# Look at disagreements
-results[!results$agreement, c("text", "prediction", "votes")]
+tapply(results$prediction == extraversion$subtopic, results$agreement, mean)
 }
 
 }
 \seealso{
-\code{\link{classify_direct}}, \code{\link{list_models}}
+\code{\link{classify_direct}}, \code{\link{classify_self_consistency}},
+\code{\link{list_models}}
 }

@@ -4,30 +4,61 @@
 \alias{classify_json}
 \title{Structured JSON text classification with confidence}
 \usage{
-classify_json(texts, classes, model = "llama-3.3-70b-versatile")
+classify_json(
+  texts,
+  classes,
+  model = "openai/gpt-oss-120b",
+  chunk_size = 40,
+  shuffle = TRUE,
+  seed = 2026
+)
 }
 \arguments{
 \item{texts}{Character vector of texts to classify.}
 
 \item{classes}{Character vector of possible category labels.}
 
-\item{model}{Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.}
+\item{model}{Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.
+See \code{\link{list_models}} for options.}
+
+\item{chunk_size}{Number of texts per API call. Default \code{40};
+\code{NULL} sends all texts in one call.}
+
+\item{shuffle}{Logical. Shuffle the texts before chunking (results are
+returned in the original order). Default \code{TRUE}.}
+
+\item{seed}{Seed for the shuffle. Default \code{2026}.}
 }
 \value{
-A data.frame with columns:
-\describe{
-\item{text_id}{Integer index}
-\item{text}{Original text (truncated)}
-\item{prediction}{Predicted category}
-\item{confidence}{Confidence level: "high", "medium", or "low"}
-\item{reasoning}{Brief explanation of the classification}
-}
+A data.frame with columns \code{text_id}, \code{text},
+\code{prediction}, \code{confidence} ("high", "medium" or "low") and
+\code{reasoning}.
 }
 \description{
-Classifies texts and returns structured output including the predicted
-category, a confidence level (high/medium/low), and a brief reasoning
-for each text. Uses JSON mode for reliable parsing.
+Classifies texts and returns the predicted category, a verbalized
+confidence level (high/medium/low) and a brief reasoning for each text.
+Uses JSON mode. For output that is \emph{guaranteed} to follow the format
+(categories restricted to \code{classes}), see \code{\link{classify_schema}}.
 }
+\section{Batch settings}{
+
+\describe{
+\item{\code{chunk_size}}{Texts per API call. Default \code{40}. Use
+\code{NULL} to send all texts in one call.}
+\item{\code{shuffle}}{Shuffle texts before chunking, so texts sorted by
+label do not bias the model. Results are returned in the original
+order. Default \code{TRUE}.}
+\item{\code{seed}}{Seed for the shuffle (the global random state is
+restored). Default \code{2026}.}
+}
+Answers are mapped to \code{classes} ignoring case and punctuation (see
+\code{\link{normalize_labels}}); invalid or missing answers are \code{NA}.
+If a whole chunk fails (for example, invalid JSON), its texts get \code{NA}
+and a warning is shown. The pause between chunks is
+\code{getOption("llmClassificR.pause", 2)} seconds; set
+\code{options(llmClassificR.verbose = FALSE)} to hide the progress messages.
+}
+
 \examples{
 \dontrun{
 data(extraversion)
@@ -37,14 +68,11 @@ results <- classify_json(
   classes = unique(extraversion$subtopic)
 )
 
-# Confidence distribution
-table(results$confidence)
-
-# Look at low-confidence predictions
-results[results$confidence == "low", ]
+# Is stated confidence related to accuracy?
+tapply(results$prediction == extraversion$subtopic, results$confidence, mean)
 }
 
 }
 \seealso{
-\code{\link{classify_direct}}, \code{\link{classify_judge}}
+\code{\link{classify_schema}}, \code{\link{classify_judge}}
 }

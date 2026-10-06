@@ -4,46 +4,80 @@
 \alias{classify_scores}
 \title{Classification with per-class scores}
 \usage{
-classify_scores(texts, classes, model = "llama-3.3-70b-versatile")
+classify_scores(
+  texts,
+  classes,
+  model = "llama-3.3-70b-versatile",
+  chunk_size = 40,
+  shuffle = TRUE,
+  seed = 2026
+)
 }
 \arguments{
 \item{texts}{Character vector of texts to classify.}
 
 \item{classes}{Character vector of possible category labels.}
 
-\item{model}{Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.}
+\item{model}{Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.
+See \code{\link{list_models}} for options.}
+
+\item{chunk_size}{Number of texts per API call. Default \code{40};
+\code{NULL} sends all texts in one call.}
+
+\item{shuffle}{Logical. Shuffle the texts before chunking (results are
+returned in the original order). Default \code{TRUE}.}
+
+\item{seed}{Seed for the shuffle. Default \code{2026}.}
 }
 \value{
 A data.frame with columns:
 \describe{
 \item{text_id}{Integer index}
-\item{prediction}{Predicted category (highest score)}
-\item{...}{One numeric column per class with 0-100 scores}
+\item{prediction}{Predicted category (highest score), \code{NA} if the
+text received no scores}
+\item{...}{One numeric column per class (named as in \code{classes})
+with 0-100 scores}
 }
 }
 \description{
 Instead of assigning a single label, this function asks the model to
-rate how well each text matches each category on a 0-100 scale. This
-is analogous to the entailment scores produced by NLI-based zero-shot
-models and is useful when you need soft assignments or confidence
-calibration.
+rate how well each text matches each category on a 0-100 scale
+(verbalized scores). Rescaled to sum to 1, they can be treated as
+probabilities and checked with \code{\link{calibration_metrics}}.
 }
+\section{Batch settings}{
+
+\describe{
+\item{\code{chunk_size}}{Texts per API call. Default \code{40}. Use
+\code{NULL} to send all texts in one call.}
+\item{\code{shuffle}}{Shuffle texts before chunking, so texts sorted by
+label do not bias the model. Results are returned in the original
+order. Default \code{TRUE}.}
+\item{\code{seed}}{Seed for the shuffle (the global random state is
+restored). Default \code{2026}.}
+}
+Answers are mapped to \code{classes} ignoring case and punctuation (see
+\code{\link{normalize_labels}}); invalid or missing answers are \code{NA}.
+If a whole chunk fails (for example, invalid JSON), its texts get \code{NA}
+and a warning is shown. The pause between chunks is
+\code{getOption("llmClassificR.pause", 2)} seconds; set
+\code{options(llmClassificR.verbose = FALSE)} to hide the progress messages.
+}
+
 \examples{
 \dontrun{
 data(extraversion)
+classes <- unique(extraversion$subtopic)
 
-results <- classify_scores(
-  texts = extraversion$text,
-  classes = unique(extraversion$subtopic)
-)
-
-# View score distribution
+results <- classify_scores(extraversion$text, classes)
 head(results)
 
-# Mean scores by true category (requires dplyr/tidyr)
+# Scores -> probabilities -> calibration
+calibration_metrics(as.matrix(results[, classes]), extraversion$subtopic,
+                    "Verbalized scores")
 }
 
 }
 \seealso{
-\code{\link{classify_direct}}, \code{\link{classify_json}}
+\code{\link{classify_direct}}, \code{\link{classify_self_consistency}}
 }

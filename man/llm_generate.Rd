@@ -9,7 +9,8 @@ llm_generate(
   system_prompt = NULL,
   model = "llama-3.3-70b-versatile",
   temperature = 0.3,
-  max_tokens = 500L
+  max_tokens = 500L,
+  ...
 )
 }
 \arguments{
@@ -22,7 +23,15 @@ llm_generate(
 \item{temperature}{Creativity parameter (0 = deterministic, 1 = creative).
 Default is \code{0.3}.}
 
-\item{max_tokens}{Maximum response length. Default is \code{500}.}
+\item{max_tokens}{Maximum response length (sent as
+\code{max_completion_tokens}). Default is \code{500}. Reasoning models
+get 2,000 extra tokens to think.}
+
+\item{...}{Additional arguments for the Groq chat completions API, for
+example \code{top_p}, \code{stop}, or the built-in browser tool of
+\code{openai/gpt-oss-120b}: \code{tools = list(list(type = "browser_search"))}
+with \code{tool_choice = "required"}. They override the package defaults
+(e.g., \code{reasoning_effort = "medium"}).}
 }
 \value{
 A character string containing the model's response.
@@ -42,6 +51,17 @@ llm_generate(
   system_prompt = "You are an expert psychometrician.",
   temperature = 0.4
 )
+
+# With web browsing (gpt-oss models on Groq)
+llm_generate(
+  prompt = paste("Summarize in 2-3 sentences one news story about AI published",
+                 "in the last 5 days (today is", format(Sys.Date(), "\%B \%d, \%Y"), ")."),
+  model = "openai/gpt-oss-120b", temperature = 1, max_tokens = 2048L,
+  tools = list(list(type = "browser_search")), tool_choice = "required"
+)
 }
 
+}
+\seealso{
+\code{\link{generate_labeled_texts}}
 }

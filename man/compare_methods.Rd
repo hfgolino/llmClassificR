@@ -10,44 +10,63 @@ compare_methods(true_labels, ...)
 \item{true_labels}{Character or factor vector of true labels.}
 
 \item{...}{Named arguments where each name is a method label and each
-value is either a character vector of predictions or a data.frame
-with a \code{prediction} column.}
+value is either a vector of predictions (or cluster memberships) or a
+data.frame with a \code{prediction} column.}
 }
 \value{
-A data.frame with columns:
+A data.frame (returned invisibly and printed) with columns:
 \describe{
 \item{method}{Name of the classification method}
-\item{NMI}{Normalized Mutual Information score}
-\item{accuracy}{Proportion of exact matches (if labels align)}
+\item{NMI}{Normalized Mutual Information (see \code{\link{compute_nmi}})}
+\item{accuracy}{Proportion of exact matches (ignoring case and
+punctuation). Only meaningful for class predictions, not clusters}
+\item{macro_F1}{Average per-class F1 score}
+\item{kappa}{Cohen's kappa}
+\item{n_invalid}{Predictions that are missing or not one of the true
+classes (for cluster numbers this equals the number of texts)}
 \item{n_classes_predicted}{Number of unique predicted classes}
 }
 }
 \description{
-Computes Normalized Mutual Information (NMI) between true labels and
-predictions from multiple classification methods. Returns a summary
-table for easy comparison.
+Evaluates several sets of predictions against the same true labels and
+returns one summary table, sorted by Normalized Mutual Information (NMI).
+Works with class predictions (LLMs, Jev, embeddings) and with cluster
+memberships (EGA communities), because NMI does not need the label names
+to match.
+}
+\details{
+Since version 0.2.0, NMI is computed with \code{\link{compute_nmi}}
+(no aricode needed). Missing predictions are treated as one "(invalid)"
+category for class predictions, so they count as errors.
 }
 \examples{
+truth <- rep(c("Friendly", "Positive", "Assertive"), each = 4)
+good  <- truth
+good[c(2, 7)] <- c("Positive", "Friendly")
+noisy <- sample(truth)
+clusters <- rep(c(2, 3, 1), each = 4)   # e.g., EGA communities
+
+compare_methods(truth, "Good model" = good, "Random" = noisy, "EGA" = clusters)
+
 \dontrun{
 data(extraversion)
 classes <- unique(extraversion$subtopic)
 
 res1 <- classify_direct(extraversion$text, classes)
 res2 <- classify_cot(extraversion$text, classes)
-res3 <- classify_json(extraversion$text, classes)
+res3 <- classify_schema(extraversion$text, classes)
 
-comparison <- compare_methods(
+compare_methods(
   true_labels = extraversion$subtopic,
-  "Direct"          = res1,
+  "Direct"           = res1,
   "Chain-of-Thought" = res2,
-  "Structured JSON"  = res3
+  "Strict schema"    = res3
 )
-print(comparison)
 }
 
 }
 \seealso{
-\code{\link{classify_direct}}, \code{\link{classify_cot}}
+\code{\link{evaluate_classification}}, \code{\link{compute_nmi}}
 }
 \author{
 Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}

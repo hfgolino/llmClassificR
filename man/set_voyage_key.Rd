@@ -4,10 +4,11 @@
 \alias{set_voyage_key}
 \title{Set Voyage AI API key}
 \usage{
-set_voyage_key(key)
+set_voyage_key(key = Sys.getenv("VOYAGE_API_KEY"))
 }
 \arguments{
-\item{key}{Your Voyage AI API key as a character string.}
+\item{key}{Your Voyage AI API key as a character string. Defaults to the
+\code{VOYAGE_API_KEY} environment variable (see \code{\link{set_groq_key}}).}
 }
 \value{
 Invisible \code{NULL}.
@@ -18,7 +19,7 @@ at \url{https://dash.voyageai.com}.
 }
 \examples{
 \dontrun{
-set_voyage_key("pa-abc123...")
+set_voyage_key()   # reads VOYAGE_API_KEY from ~/.Renviron
 }
 
 }

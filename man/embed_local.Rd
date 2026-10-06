@@ -4,7 +4,12 @@
 \alias{embed_local}
 \title{Get local HuggingFace encoder embeddings (all layers)}
 \usage{
-embed_local(texts, model_name = "roberta-base", max_length = 128L)
+embed_local(
+  texts,
+  model_name = "roberta-base",
+  max_length = 128L,
+  isolate = TRUE
+)
 }
 \arguments{
 \item{texts}{Character vector of texts to embed.}
@@ -12,9 +17,20 @@ embed_local(texts, model_name = "roberta-base", max_length = 128L)
 \item{model_name}{HuggingFace model identifier. Default is \code{"roberta-base"}.
 Other options: \code{"bert-base-uncased"}, \code{"microsoft/deberta-v3-base"},
 \code{"albert-base-v2"}, \code{"google/electra-base-discriminator"},
-\code{"answerdotai/ModernBERT-base"}.}
+\code{"answerdotai/ModernBERT-base"} (22 layers, 8,192-token context; needs
+the environment created with \code{setup_llm_env(modernbert = TRUE)}).}
 
 \item{max_length}{Maximum token length for truncation. Default is \code{128}.}
+
+\item{isolate}{Logical. Run the extraction in a separate background R
+process (default \code{TRUE}, needs the \pkg{callr} package). PyTorch
+loads native libraries that can clash with libraries already loaded in a
+long R session and crash it ("R Session Aborted" in RStudio, mostly on
+macOS). In a separate process such a crash cannot take your session
+down: you get an ordinary R error with the real cause instead. The
+background process uses the Python environment activated with
+\code{\link{activate_llm_env}}. Set \code{isolate = FALSE} to run in the
+current session (slightly faster).}
 }
 \value{
 A list with:
@@ -39,9 +55,12 @@ This requires PyTorch and transformers to be installed in the environment.
 }
 \examples{
 \dontrun{
+library(llmClassificR)
+activate_llm_env()
 data(extraversion)
 
-# Extract from BERT
+# Extract from BERT (in a background R process, so a PyTorch crash
+# cannot abort your session)
 emb <- embed_local(extraversion$text, model_name = "bert-base-uncased")
 cat("Layers:", emb$num_layers, "| Hidden size:", emb$hidden_size, "\n")
 
@@ -49,11 +68,19 @@ cat("Layers:", emb$num_layers, "| Hidden size:", emb$hidden_size, "\n")
 layer_quality <- evaluate_layers(emb$layers, extraversion$subtopic)
 best <- which.max(layer_quality$combined_score)
 best_embeddings <- emb$layers[[best]]
+
+# Unsupervised (EGA) vs. supervised (linear probe) view of every layer
+probe_layers(emb$layers, extraversion$subtopic, ega = TRUE)
+
+# ModernBERT (in a fresh R session)
+# activate_llm_env("modernbert_env")
+# emb_mb <- embed_local(extraversion$text, "answerdotai/ModernBERT-base")
 }
 
 }
 \seealso{
-\code{\link{embed_voyage}}, \code{\link{evaluate_layers}}
+\code{\link{embed_voyage}}, \code{\link{evaluate_layers}},
+\code{\link{probe_layers}}, \code{\link{embed_sentences}}
 }
 \author{
 Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}

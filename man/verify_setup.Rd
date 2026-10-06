@@ -2,13 +2,14 @@
 % Please edit documentation in R/setup.R
 \name{verify_setup}
 \alias{verify_setup}
-\title{Verify textLLM setup}
+\title{Verify llmClassificR setup}
 \usage{
 verify_setup(test_apis = FALSE)
 }
 \arguments{
-\item{test_apis}{Logical. If \code{TRUE}, sends a test request to Groq
-and Voyage AI to verify API keys work. Default is \code{FALSE}.}
+\item{test_apis}{Logical. If \code{TRUE}, sends a small test request to
+Groq, Voyage AI, Jina AI and TypeSafe (Jev) to verify that the keys work.
+Services without a key are reported as FAILED. Default is \code{FALSE}.}
 }
 \value{
 A list with version information, returned invisibly.
@@ -22,9 +23,9 @@ are available. Optionally tests API connectivity.
 activate_llm_env()
 verify_setup()
 
-# Also test API keys
-set_groq_key("your-key")
-set_voyage_key("your-key")
+# Also test API keys (read from ~/.Renviron)
+set_groq_key()
+set_voyage_key()
 verify_setup(test_apis = TRUE)
 }
 

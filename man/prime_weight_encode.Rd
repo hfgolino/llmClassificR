@@ -8,7 +8,8 @@ prime_weight_encode(
   layers,
   model = "tmfg",
   uni_method = "expand",
-  steps_range = 2:25
+  steps_range = 2:25,
+  true_labels = NULL
 )
 }
 \arguments{
@@ -21,14 +22,21 @@ by \code{embed_local()$layers}.}
 
 \item{steps_range}{Integer vector of walktrap steps to search. Default
 is \code{2:25}.}
+
+\item{true_labels}{Optional vector of true labels. If given, the NMI of
+every walktrap step is added to \code{step_results} (column \code{NMI})
+for teaching and diagnostics. The chosen step never uses the labels.}
 }
 \value{
 A list with:
 \describe{
-\item{best_communities}{Community assignments at the best walktrap step}
-\item{best_nmi}{Best NMI across walktrap steps (if \code{true_labels} was provided)}
-\item{best_step}{Optimal walktrap step count}
-\item{step_results}{Data.frame of communities per step}
+\item{best_communities}{Community assignments at the chosen walktrap step}
+\item{best_step}{Chosen walktrap step: the first step giving the most
+frequent number of communities across \code{steps_range} (label-free)}
+\item{n_communities}{Number of communities at the chosen step}
+\item{step_results}{Data.frame with the number of communities (and the
+NMI, if \code{true_labels} was given) per step}
+\item{all_communities}{List of community assignments for every step}
 \item{encoding_matrix}{The combined prime-weight encoded network}
 \item{layer_egas}{List of per-layer EGA results}
 }
@@ -54,6 +62,13 @@ The algorithm:
 \item Apply walktrap community detection, searching for optimal steps
 }
 }
+\section{Caution}{
+
+Picking the step with the highest NMI (\code{step_results$NMI}) uses the
+true labels, so that NMI is an optimistic upper bound, not an
+unsupervised result. Report the label-free \code{best_communities}.
+}
+
 \examples{
 \dontrun{
 data(extraversion)
@@ -66,7 +81,11 @@ pw <- prime_weight_encode(emb$layers)
 table(pw$best_communities)
 
 # Compare with true labels
-aricode::NMI(extraversion$subtopic, pw$best_communities)
+compute_nmi(extraversion$subtopic, pw$best_communities)
+
+# NMI of every walktrap step (diagnostic only: uses the labels)
+pw2 <- prime_weight_encode(emb$layers, true_labels = extraversion$subtopic)
+pw2$step_results
 
 # Add Voyage AI embeddings as extra "layer"
 voyage_emb <- embed_voyage(extraversion$text)

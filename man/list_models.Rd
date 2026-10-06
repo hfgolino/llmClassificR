@@ -32,6 +32,9 @@ list_models()
 
 # Works without API key (static fallback)
 list_models()
+
+# Only models that support strict JSON Schema (see classify_schema())
+grep("gpt-oss|qwen3", list_models()$model, value = TRUE)
 }
 
 }

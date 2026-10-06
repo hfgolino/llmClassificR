@@ -1,4 +1,4 @@
-#' Set up the Python environment for textLLM
+#' Set up the Python environment for llmClassificR
 #'
 #' Creates a Python virtual environment using UV and installs all required
 #' packages with pinned versions for cross-platform compatibility (Intel Mac,
@@ -6,6 +6,13 @@
 #'
 #' @param env_name Name of the virtual environment. Default is \code{"llm_env"}.
 #' @param python_version Python version to install. Default is \code{"3.11"}.
+#' @param modernbert Logical. If \code{TRUE}, installs transformers 4.48.3,
+#'   the first version that supports ModernBERT
+#'   (\code{"answerdotai/ModernBERT-base"}), still with PyTorch 2.2.2. Use it
+#'   for a separate, optional environment, e.g.
+#'   \code{setup_llm_env("modernbert_env", modernbert = TRUE)}, and activate it
+#'   with \code{activate_llm_env("modernbert_env")} in a fresh R session.
+#'   Default \code{FALSE}.
 #'
 #' @details
 #' This function:
@@ -15,6 +22,9 @@
 #'   \item Installs PyTorch 2.2.2 and transformers (pinned for Intel Mac compatibility)
 #'   \item Installs supporting packages (numpy, safetensors, etc.)
 #' }
+#'
+#' Jev (\code{\link{jev_classify}}) and Jina AI (\code{\link{embed_jina}}) are
+#' called from pure R and do not need this environment.
 #'
 #' UV must be installed first. See \url{https://docs.astral.sh/uv/} for
 #' installation instructions.
@@ -30,10 +40,14 @@
 #'
 #' # Custom environment name
 #' setup_llm_env(env_name = "my_env")
+#'
+#' # Optional second environment for ModernBERT
+#' setup_llm_env(env_name = "modernbert_env", modernbert = TRUE)
 #' }
 #'
 #' @export
-setup_llm_env <- function(env_name = "llm_env", python_version = "3.11") {
+setup_llm_env <- function(env_name = "llm_env", python_version = "3.11",
+                          modernbert = FALSE) {
 
   # Check UV is available
   uv_check <- system("uv --version", intern = TRUE, ignore.stderr = TRUE)
@@ -48,29 +62,33 @@ setup_llm_env <- function(env_name = "llm_env", python_version = "3.11") {
     )
   }
 
+  # Quote arguments for the shell of this platform (spaces in paths; Windows)
+  q <- function(x) shQuote(x, type = if (.Platform$OS.type == "windows") "cmd" else "sh")
+
   cat("Creating Python", python_version, "environment:", env_name, "\n")
-  system(paste0("uv venv --python ", python_version, " '", env_name, "'"))
+  system(paste("uv venv --python", python_version, q(env_name)))
 
   # Detect python path (use full path, quoted for spaces)
   py <- .get_python_path(env_name)
 
+  transformers_pin <- if (modernbert) "transformers==4.48.3" else "transformers>=4.38,<4.45"
   cat("Installing packages (this takes 1-2 minutes)...\n")
-  install_cmd <- paste0(
-    "uv pip install --python '", py, "'",
-    " groq voyageai",
-    " 'torch==2.2.2'",
-    " 'transformers>=4.38,<4.45'",
-    " 'accelerate>=0.27,<1.0'",
-    " 'numpy<2'",
-    " safetensors sentencepiece protobuf tokenizers"
+  install_cmd <- paste(
+    "uv pip install --python", q(py),
+    "groq voyageai",
+    q("torch==2.2.2"),
+    q(transformers_pin),
+    q("accelerate>=0.27,<1.0"),
+    q("numpy<2"),
+    "safetensors sentencepiece protobuf tokenizers"
   )
   result <- system(install_cmd)
 
   if (result == 0) {
     cat("\nSetup complete! Now run:\n")
-    cat("  activate_llm_env()\n")
-    cat("  set_groq_key('your-key-here')\n")
-    cat("  set_voyage_key('your-key-here')\n")
+    cat("  activate_llm_env(\"", env_name, "\")\n", sep = "")
+    cat("  set_groq_key()     # reads GROQ_API_KEY from ~/.Renviron\n")
+    cat("  set_voyage_key()   # reads VOYAGE_API_KEY from ~/.Renviron\n")
   } else {
     warning("Installation may have encountered errors. Check the output above.")
   }
@@ -82,10 +100,12 @@ setup_llm_env <- function(env_name = "llm_env", python_version = "3.11") {
 #' Activate the Python environment
 #'
 #' Points reticulate to the Python interpreter in the UV virtual environment.
-#' Must be called at the start of each R session before using any textLLM
+#' Must be called at the start of each R session before using any llmClassificR
 #' functions that require Python.
 #'
 #' @param env_name Name of the virtual environment. Default is \code{"llm_env"}.
+#' @param preload_torch Logical. Load PyTorch right away (default \code{TRUE}).
+#'   See Details.
 #'
 #' @details
 #' This function calls \code{reticulate::use_python()} to lock the R session
@@ -93,18 +113,38 @@ setup_llm_env <- function(env_name = "llm_env", python_version = "3.11") {
 #' Python it loads, you must call this \emph{before} any other reticulate
 #' operations, and you must restart R to switch environments.
 #'
+#' \strong{Avoiding "R Session Aborted" crashes.} PyTorch ships its own
+#' native libraries (for example, the OpenMP runtime \code{libomp}). When
+#' PyTorch is loaded late in a session, after other native libraries are
+#' already in memory, it can crash the whole R session (RStudio shows
+#' "R encountered a fatal error"), typically on macOS. To prevent this,
+#' \code{activate_llm_env()}:
+#' \itemize{
+#'   \item sets \code{KMP_DUPLICATE_LIB_OK=TRUE} on macOS (unless you set it),
+#'     so a second OpenMP runtime gives a warning instead of an abort, and
+#'     \code{TOKENIZERS_PARALLELISM=false};
+#'   \item loads PyTorch immediately (\code{preload_torch = TRUE}), so its
+#'     libraries are the first ones in memory. This adds a few seconds.
+#' }
+#' Call \code{activate_llm_env()} at the very start of the session, right
+#' after \code{library(llmClassificR)} and before other packages and analyses.
+#'
 #' @return Invisible \code{NULL}.
 #'
 #' @author Hudson Golino <hfg9s at virginia.edu>
 #'
 #' @examples
 #' \dontrun{
-#' # At the start of every R session
+#' # At the start of every R session, before other packages
+#' library(llmClassificR)
 #' activate_llm_env()
+#'
+#' # Only API functions needed (Groq, Voyage AI): skip loading PyTorch
+#' activate_llm_env(preload_torch = FALSE)
 #' }
 #'
 #' @export
-activate_llm_env <- function(env_name = "llm_env") {
+activate_llm_env <- function(env_name = "llm_env", preload_torch = TRUE) {
 
   py <- .get_python_path(env_name)
 
@@ -117,10 +157,26 @@ activate_llm_env <- function(env_name = "llm_env") {
     )
   }
 
-  reticulate::use_python(py, required = TRUE)
+  # Environment variables must be set BEFORE Python and PyTorch start
   Sys.setenv(TOKENIZERS_PARALLELISM = "false")
+  if (Sys.info()[["sysname"]] == "Darwin" && !nzchar(Sys.getenv("KMP_DUPLICATE_LIB_OK"))) {
+    Sys.setenv(KMP_DUPLICATE_LIB_OK = "TRUE")
+  }
+
+  reticulate::use_python(py, required = TRUE)
+  .pkg_env$python <- py      # used by embed_local(isolate = TRUE)
   cat("Activated environment:", env_name, "\n")
   cat("Python:", py, "\n")
+
+  if (preload_torch) {
+    if (reticulate::py_module_available("torch")) {
+      torch <- reticulate::import("torch")
+      cat("PyTorch", torch$`__version__`, "loaded\n")
+    } else {
+      message("PyTorch is not installed in '", env_name,
+              "': local models (embed_local(), embed_sentences()) will not work.")
+    }
+  }
 
   invisible(NULL)
 }
@@ -131,24 +187,35 @@ activate_llm_env <- function(env_name = "llm_env") {
 #' Stores the Groq API key for the current R session and initializes the
 #' Groq client. Get a free key at \url{https://console.groq.com}.
 #'
-#' @param key Your Groq API key as a character string.
+#' @param key Your Groq API key as a character string. Defaults to the
+#'   \code{GROQ_API_KEY} environment variable. The recommended workflow is to
+#'   store your keys in \code{~/.Renviron} (e.g., with
+#'   \code{usethis::edit_r_environ()}), one per line
+#'   (\code{GROQ_API_KEY=gsk_...}), restart R and call \code{set_groq_key()}
+#'   with no arguments, so keys never appear in scripts you share.
+#' @param max_retries Number of automatic retries (with exponential backoff)
+#'   for rate-limit (429) and server errors. Default is \code{5}.
 #'
 #' @return Invisible \code{NULL}.
 #' @author Hudson Golino <hfg9s at virginia.edu>
 #' @examples
 #' \dontrun{
+#' # Recommended: key stored in ~/.Renviron as GROQ_API_KEY=gsk_...
+#' set_groq_key()
+#'
+#' # Or explicitly (avoid this in shared scripts)
 #' set_groq_key("gsk_abc123...")
 #' }
 #'
 #' @export
-set_groq_key <- function(key) {
-  if (missing(key) || !nzchar(key)) {
-    stop("Please provide a valid Groq API key.\n",
+set_groq_key <- function(key = Sys.getenv("GROQ_API_KEY"), max_retries = 5L) {
+  if (is.null(key) || !nzchar(key)) {
+    stop("Please provide a valid Groq API key (or set GROQ_API_KEY in ~/.Renviron).\n",
          "Get one free at https://console.groq.com", call. = FALSE)
   }
 
   groq <- reticulate::import("groq")
-  .pkg_env$groq_client <- groq$Groq(api_key = key)
+  .pkg_env$groq_client <- groq$Groq(api_key = key, max_retries = as.integer(max_retries))
   .pkg_env$groq_key <- key
   cat("Groq API key set successfully.\n")
 
@@ -161,19 +228,20 @@ set_groq_key <- function(key) {
 #' Stores the Voyage AI API key for the current R session. Get a free key
 #' at \url{https://dash.voyageai.com}.
 #'
-#' @param key Your Voyage AI API key as a character string.
+#' @param key Your Voyage AI API key as a character string. Defaults to the
+#'   \code{VOYAGE_API_KEY} environment variable (see \code{\link{set_groq_key}}).
 #'
 #' @return Invisible \code{NULL}.
 #' @author Hudson Golino <hfg9s at virginia.edu>
 #' @examples
 #' \dontrun{
-#' set_voyage_key("pa-abc123...")
+#' set_voyage_key()   # reads VOYAGE_API_KEY from ~/.Renviron
 #' }
 #'
 #' @export
-set_voyage_key <- function(key) {
-  if (missing(key) || !nzchar(key)) {
-    stop("Please provide a valid Voyage AI API key.\n",
+set_voyage_key <- function(key = Sys.getenv("VOYAGE_API_KEY")) {
+  if (is.null(key) || !nzchar(key)) {
+    stop("Please provide a valid Voyage AI API key (or set VOYAGE_API_KEY in ~/.Renviron).\n",
          "Get one free at https://dash.voyageai.com", call. = FALSE)
   }
 
@@ -192,19 +260,20 @@ set_voyage_key <- function(key) {
 #' high-quality multilingual embeddings with generous rate limits. Get a
 #' free key at \url{https://jina.ai/embeddings/}.
 #'
-#' @param key Your Jina AI API key as a character string.
+#' @param key Your Jina AI API key as a character string. Defaults to the
+#'   \code{JINA_API_KEY} environment variable (see \code{\link{set_groq_key}}).
 #'
 #' @return Invisible \code{NULL}.
 #' @author Hudson Golino <hfg9s at virginia.edu>
 #' @examples
 #' \dontrun{
-#' set_jina_key("jina_abc123...")
+#' set_jina_key()   # reads JINA_API_KEY from ~/.Renviron
 #' }
 #'
 #' @export
-set_jina_key <- function(key) {
-  if (missing(key) || !nzchar(key)) {
-    stop("Please provide a valid Jina AI API key.\n",
+set_jina_key <- function(key = Sys.getenv("JINA_API_KEY")) {
+  if (is.null(key) || !nzchar(key)) {
+    stop("Please provide a valid Jina AI API key (or set JINA_API_KEY in ~/.Renviron).\n",
          "Get one free at https://jina.ai/embeddings/", call. = FALSE)
   }
 
@@ -215,13 +284,14 @@ set_jina_key <- function(key) {
 }
 
 
-#' Verify textLLM setup
+#' Verify llmClassificR setup
 #'
 #' Checks that the Python environment is active and all required packages
 #' are available. Optionally tests API connectivity.
 #'
-#' @param test_apis Logical. If \code{TRUE}, sends a test request to Groq
-#'   and Voyage AI to verify API keys work. Default is \code{FALSE}.
+#' @param test_apis Logical. If \code{TRUE}, sends a small test request to
+#'   Groq, Voyage AI, Jina AI and TypeSafe (Jev) to verify that the keys work.
+#'   Services without a key are reported as FAILED. Default is \code{FALSE}.
 #'
 #' @return A list with version information, returned invisibly.
 #' @author Hudson Golino <hfg9s at virginia.edu>
@@ -230,9 +300,9 @@ set_jina_key <- function(key) {
 #' activate_llm_env()
 #' verify_setup()
 #'
-#' # Also test API keys
-#' set_groq_key("your-key")
-#' set_voyage_key("your-key")
+#' # Also test API keys (read from ~/.Renviron)
+#' set_groq_key()
+#' set_voyage_key()
 #' verify_setup(test_apis = TRUE)
 #' }
 #'
@@ -264,13 +334,8 @@ verify_setup <- function(test_apis = FALSE) {
 
     # Test Groq
     tryCatch({
-      client <- .get_groq_client()
-      resp <- client$chat$completions$create(
-        model = "llama-3.1-8b-instant",
-        messages = list(list("role" = "user", "content" = "Say 'hello' and nothing else.")),
-        temperature = 0.0,
-        max_tokens = 5L
-      )
+      .groq_chat("Say 'hello' and nothing else.", model = "llama-3.1-8b-instant",
+                 max_tokens = 5L)
       cat("  Groq API:      OK\n")
     }, error = function(e) {
       cat("  Groq API:      FAILED -", conditionMessage(e), "\n")
@@ -279,7 +344,7 @@ verify_setup <- function(test_apis = FALSE) {
     # Test Voyage AI
     tryCatch({
       vo <- .get_voyageai()
-      vo$embed(list("test"), model = "voyage-3.5", input_type = "query")
+      vo$embed(list("test"), model = "voyage-4", input_type = "query")
       cat("  Voyage AI API: OK\n")
     }, error = function(e) {
       cat("  Voyage AI API: FAILED -", conditionMessage(e), "\n")
@@ -293,6 +358,14 @@ verify_setup <- function(test_apis = FALSE) {
       cat("  Jina AI API:   OK\n")
     }, error = function(e) {
       cat("  Jina AI API:   FAILED -", conditionMessage(e), "\n")
+    })
+
+    # Test TypeSafe (Jev)
+    tryCatch({
+      jev_list_models()
+      cat("  TypeSafe (Jev): OK\n")
+    }, error = function(e) {
+      cat("  TypeSafe (Jev): FAILED -", conditionMessage(e), "\n")
     })
   }
 
@@ -326,6 +399,9 @@ verify_setup <- function(test_apis = FALSE) {
 #'
 #' # Works without API key (static fallback)
 #' list_models()
+#'
+#' # Only models that support strict JSON Schema (see classify_schema())
+#' grep("gpt-oss|qwen3", list_models()$model, value = TRUE)
 #' }
 #'
 #' @export
@@ -367,14 +443,17 @@ list_models <- function(type = NULL) {
   }
 
   # Static fallback
+  # Production models on Groq (September 2026); qwen3.8 is a preview model.
+  # Always prefer the live list: models are retired regularly.
   models <- data.frame(
     model = c("llama-3.3-70b-versatile", "llama-3.1-8b-instant",
-              "gemma2-9b-it", "deepseek-r1-distill-llama-70b"),
+              "openai/gpt-oss-20b", "openai/gpt-oss-120b", "qwen/qwen3.8-27b"),
     display_name = c("Llama 3.3 70B", "Llama 3.1 8B",
-                     "Gemma 2 9B", "DeepSeek R1 70B"),
-    context_window = c(128000L, 131072L, 8192L, 128000L),
-    owned_by = c("Meta", "Meta", "Google", "DeepSeek"),
-    type = c("chat", "chat", "chat", "chat"),
+                     "GPT-OSS 20B (reasoning)", "GPT-OSS 120B (reasoning)",
+                     "Qwen 3.8 27B (reasoning, preview)"),
+    context_window = c(131072L, 131072L, 131072L, 131072L, NA),
+    owned_by = c("Meta", "Meta", "OpenAI", "OpenAI", "Alibaba Cloud"),
+    type = c("chat", "chat", "chat", "chat", "chat"),
     stringsAsFactors = FALSE
   )
 
@@ -387,8 +466,9 @@ list_models <- function(type = NULL) {
   cat("----------------------------------------------------------------------\n")
   for (i in seq_len(nrow(models))) {
     cat(sprintf("  %-45s %s\n", models$model[i],
-                paste0("(", formatC(models$context_window[i],
-                                    format = "d", big.mark = ","), " ctx)")))
+                ifelse(is.na(models$context_window[i]), "",
+                       paste0("(", formatC(models$context_window[i],
+                                           format = "d", big.mark = ","), " ctx)"))))
   }
   cat("----------------------------------------------------------------------\n")
   invisible(models)
@@ -453,8 +533,12 @@ list_models <- function(type = NULL) {
 #' @noRd
 .get_groq_client <- function() {
   if (is.null(.pkg_env$groq_client)) {
-    stop("Groq API key not set. Run set_groq_key('your-key') first.",
-         call. = FALSE)
+    if (nzchar(Sys.getenv("GROQ_API_KEY"))) {
+      set_groq_key()
+    } else {
+      stop("Groq API key not set. Run set_groq_key() first ",
+           "(or set GROQ_API_KEY in ~/.Renviron).", call. = FALSE)
+    }
   }
   .pkg_env$groq_client
 }
@@ -463,8 +547,12 @@ list_models <- function(type = NULL) {
 #' @noRd
 .get_voyageai <- function() {
   if (is.null(.pkg_env$voyage_client)) {
-    stop("Voyage AI API key not set. Run set_voyage_key('your-key') first.",
-         call. = FALSE)
+    if (nzchar(Sys.getenv("VOYAGE_API_KEY"))) {
+      set_voyage_key()
+    } else {
+      stop("Voyage AI API key not set. Run set_voyage_key() first ",
+           "(or set VOYAGE_API_KEY in ~/.Renviron).", call. = FALSE)
+    }
   }
   .pkg_env$voyage_client
 }
@@ -473,8 +561,10 @@ list_models <- function(type = NULL) {
 #' @noRd
 .get_jina_key <- function() {
   if (is.null(.pkg_env$jina_key)) {
-    stop("Jina AI API key not set. Run set_jina_key('your-key') first.",
-         call. = FALSE)
+    env_key <- Sys.getenv("JINA_API_KEY")
+    if (nzchar(env_key)) return(env_key)
+    stop("Jina AI API key not set. Run set_jina_key() first ",
+         "(or set JINA_API_KEY in ~/.Renviron).", call. = FALSE)
   }
   .pkg_env$jina_key
 }
@@ -482,6 +572,7 @@ list_models <- function(type = NULL) {
 #' Format texts as a numbered list for batch prompting
 #' @noRd
 .format_numbered_texts <- function(texts) {
+  texts <- gsub("[\r\n]+", " ", trimws(texts))   # one text per line
   numbered <- paste(seq_along(texts), ". ", texts, sep = "")
   paste(numbered, collapse = "\n")
 }

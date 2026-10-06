@@ -4,30 +4,69 @@
 \alias{classify_cot}
 \title{Chain-of-thought text classification}
 \usage{
-classify_cot(texts, classes, model = "llama-3.3-70b-versatile")
+classify_cot(
+  texts,
+  classes,
+  model = "openai/gpt-oss-120b",
+  chunk_size = 40,
+  shuffle = TRUE,
+  seed = 2026
+)
 }
 \arguments{
 \item{texts}{Character vector of texts to classify.}
 
 \item{classes}{Character vector of possible category labels.}
 
-\item{model}{Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.}
+\item{model}{Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.
+See \code{\link{list_models}} for options.}
+
+\item{chunk_size}{Number of texts per API call. Default \code{40};
+\code{NULL} sends all texts in one call.}
+
+\item{shuffle}{Logical. Shuffle the texts before chunking (results are
+returned in the original order). Default \code{TRUE}.}
+
+\item{seed}{Seed for the shuffle. Default \code{2026}.}
 }
 \value{
 A data.frame with columns:
 \describe{
 \item{text_id}{Integer index}
 \item{text}{Original text (truncated)}
-\item{prediction}{Predicted category}
+\item{prediction}{Predicted category (or \code{NA})}
 \item{reasoning}{Model's reasoning for the classification}
 }
 }
 \description{
-Classifies texts by asking the model to reason step-by-step before
-assigning a category. Returns both the prediction and the reasoning
-for each text. This approach often improves accuracy on harder
-classification tasks by encouraging the model to analyze key features.
+Classifies texts by asking the model to reason briefly before assigning a
+category. Returns both the prediction and the reasoning for each text.
 }
+\details{
+Reasoning models (\code{openai/gpt-oss-20b},
+\code{openai/gpt-oss-120b}, \code{qwen/qwen3.8-27b}) already "think"
+internally; with them, explicit chain-of-thought prompting usually adds
+little.
+}
+\section{Batch settings}{
+
+\describe{
+\item{\code{chunk_size}}{Texts per API call. Default \code{40}. Use
+\code{NULL} to send all texts in one call.}
+\item{\code{shuffle}}{Shuffle texts before chunking, so texts sorted by
+label do not bias the model. Results are returned in the original
+order. Default \code{TRUE}.}
+\item{\code{seed}}{Seed for the shuffle (the global random state is
+restored). Default \code{2026}.}
+}
+Answers are mapped to \code{classes} ignoring case and punctuation (see
+\code{\link{normalize_labels}}); invalid or missing answers are \code{NA}.
+If a whole chunk fails (for example, invalid JSON), its texts get \code{NA}
+and a warning is shown. The pause between chunks is
+\code{getOption("llmClassificR.pause", 2)} seconds; set
+\code{options(llmClassificR.verbose = FALSE)} to hide the progress messages.
+}
+
 \examples{
 \dontrun{
 data(extraversion)

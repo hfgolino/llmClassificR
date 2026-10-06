@@ -9,8 +9,9 @@ rag_generate(
   doc_embeddings,
   texts,
   top_k = 10,
-  model = "llama-3.3-70b-versatile",
-  max_tokens = 500L
+  model = "openai/gpt-oss-120b",
+  max_tokens = 500L,
+  embed_model = "voyage-4"
 )
 }
 \arguments{
@@ -25,6 +26,9 @@ rag_generate(
 \item{model}{Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.}
 
 \item{max_tokens}{Maximum response length. Default is \code{500}.}
+
+\item{embed_model}{Voyage AI model used to embed the query (same family as
+\code{doc_embeddings}). Default is \code{"voyage-4"}.}
 }
 \value{
 A list with:

@@ -27,7 +27,9 @@ as returned by \code{\link{embed_voyage}} or \code{\link{embed_local}}.}
 
 \item{optimize_steps}{Logical. If \code{TRUE} (default is \code{FALSE}), uses
 \code{EGA.fit} to search for the optimal number of walktrap steps (2-25),
-which can improve community detection but takes longer.}
+which can improve community detection but takes longer. \code{EGA.fit}
+chooses the steps with the lowest Total Entropy Fit Index (TEFI), so the
+true labels are never used.}
 
 \item{steps_range}{Integer vector of walktrap steps to try when
 \code{optimize_steps = TRUE}. Default is \code{2:25}.}
@@ -58,17 +60,21 @@ embeddings <- embed_voyage(extraversion$text)
 result <- ega_classify(embeddings)
 table(result$communities)
 
-# Compare with true labels
-aricode::NMI(extraversion$subtopic, result$communities)
+# Compare with true labels (texts left unassigned count as disagreements)
+compute_nmi(extraversion$subtopic, result$communities)
 
-# With walktrap optimization
+# With walktrap optimization (chosen by TEFI, not by the labels)
 result_opt <- ega_classify(embeddings, optimize_steps = TRUE)
-aricode::NMI(extraversion$subtopic, result_opt$communities)
+compute_nmi(extraversion$subtopic, result_opt$communities)
+
+# Supervised counterpart: a linear head on the same embeddings
+linear_probe(embeddings, extraversion$subtopic)
 }
 
 }
 \seealso{
-\code{\link{prime_weight_encode}}, \code{\link{embed_voyage}}
+\code{\link{prime_weight_encode}}, \code{\link{embed_voyage}},
+\code{\link{compute_nmi}}, \code{\link{probe_layers}}
 }
 \author{
 Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}

@@ -4,17 +4,20 @@
 \alias{activate_llm_env}
 \title{Activate the Python environment}
 \usage{
-activate_llm_env(env_name = "llm_env")
+activate_llm_env(env_name = "llm_env", preload_torch = TRUE)
 }
 \arguments{
 \item{env_name}{Name of the virtual environment. Default is \code{"llm_env"}.}
+
+\item{preload_torch}{Logical. Load PyTorch right away (default \code{TRUE}).
+See Details.}
 }
 \value{
 Invisible \code{NULL}.
 }
 \description{
 Points reticulate to the Python interpreter in the UV virtual environment.
-Must be called at the start of each R session before using any textLLM
+Must be called at the start of each R session before using any llmClassificR
 functions that require Python.
 }
 \details{
@@ -22,11 +25,31 @@ This function calls \code{reticulate::use_python()} to lock the R session
 to the specified Python interpreter. Because reticulate locks to the first
 Python it loads, you must call this \emph{before} any other reticulate
 operations, and you must restart R to switch environments.
+
+\strong{Avoiding "R Session Aborted" crashes.} PyTorch ships its own
+native libraries (for example, the OpenMP runtime \code{libomp}). When
+PyTorch is loaded late in a session, after other native libraries are
+already in memory, it can crash the whole R session (RStudio shows
+"R encountered a fatal error"), typically on macOS. To prevent this,
+\code{activate_llm_env()}:
+\itemize{
+\item sets \code{KMP_DUPLICATE_LIB_OK=TRUE} on macOS (unless you set it),
+so a second OpenMP runtime gives a warning instead of an abort, and
+\code{TOKENIZERS_PARALLELISM=false};
+\item loads PyTorch immediately (\code{preload_torch = TRUE}), so its
+libraries are the first ones in memory. This adds a few seconds.
+}
+Call \code{activate_llm_env()} at the very start of the session, right
+after \code{library(llmClassificR)} and before other packages and analyses.
 }
 \examples{
 \dontrun{
-# At the start of every R session
+# At the start of every R session, before other packages
+library(llmClassificR)
 activate_llm_env()
+
+# Only API functions needed (Groq, Voyage AI): skip loading PyTorch
+activate_llm_env(preload_torch = FALSE)
 }
 
 }
