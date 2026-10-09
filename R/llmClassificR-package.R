@@ -144,6 +144,8 @@
 #' \itemize{
 #'   \item \code{\link{ega_classify}} - Exploratory Graph Analysis on embedding matrices
 #'   \item \code{\link{prime_weight_encode}} - Prime-weight encoding across transformer layers
+#'   \item \code{\link{plot_prime_weight}} - Plot the encoding, next to the true labels
+#'   \item \code{\link{match_communities}} - Rename communities after the labels they overlap most
 #' }
 #'
 #' @section Utility Functions:

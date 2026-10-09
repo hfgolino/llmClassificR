@@ -176,6 +176,8 @@ as errors) and results come back in the original order.
 |----------|-------------|
 | `ega_classify()` | EGA on embeddings for text classification |
 | `prime_weight_encode()` | Prime-weight encoding across transformer layers |
+| `plot_prime_weight()` | Plot the encoding, next to the true labels (matched colors) |
+| `match_communities()` | Rename communities after the labels they overlap most |
 
 ### Synthetic data and utilities
 

@@ -9,7 +9,7 @@ rag_generate(
   doc_embeddings,
   texts,
   top_k = 10,
-  model = "openai/gpt-oss-120b",
+  model = "llama-3.3-70b-versatile",
   max_tokens = 500L,
   embed_model = "voyage-4"
 )

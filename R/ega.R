@@ -107,7 +107,9 @@ ega_classify <- function(embeddings,
 #' Combines EGA networks from multiple embedding layers using prime number
 #' weighting. Each layer's EGA network is raised to a prime power and summed,
 #' creating a single encoded network that preserves information across layers.
-#' Community detection is then performed on the combined network.
+#' Community detection is then performed on the combined network, either on
+#' the raw encoding (default) or on its floor-free version
+#' (\code{remove_floor = TRUE}).
 #'
 #' This technique was introduced by Golino et al. for combining information
 #' across transformer layers in a principled way.
@@ -121,6 +123,10 @@ ega_classify <- function(embeddings,
 #' @param true_labels Optional vector of true labels. If given, the NMI of
 #'   every walktrap step is added to \code{step_results} (column \code{NMI})
 #'   for teaching and diagnostics. The chosen step never uses the labels.
+#' @param remove_floor Logical. If \code{FALSE} (default), walktrap runs on
+#'   the raw encoding matrix, as in earlier versions. If \code{TRUE}, walktrap
+#'   runs on the floor-free \code{network} (see Details). Rescaling alone does
+#'   not change walktrap; removing the floor does.
 #'
 #' @return A list with:
 #' \describe{
@@ -131,7 +137,12 @@ ega_classify <- function(embeddings,
 #'   \item{step_results}{Data.frame with the number of communities (and the
 #'     NMI, if \code{true_labels} was given) per step}
 #'   \item{all_communities}{List of community assignments for every step}
-#'   \item{encoding_matrix}{The combined prime-weight encoded network}
+#'   \item{encoding_matrix}{The combined prime-weight encoded network (raw,
+#'     with the floor)}
+#'   \item{network}{The floor-free encoding rescaled to 0-1, with a zero
+#'     diagonal (see Details). Used by \code{\link{plot_prime_weight}}}
+#'   \item{remove_floor}{Which network walktrap used (\code{TRUE} = floor-free)}
+#'   \item{primes}{The prime assigned to each network, in order}
 #'   \item{layer_egas}{List of per-layer EGA results}
 #' }
 #'
@@ -151,6 +162,23 @@ ega_classify <- function(embeddings,
 #'   \item Sum all weighted networks
 #'   \item Apply walktrap community detection, searching for optimal steps
 #' }
+#'
+#' \strong{The floor.} With \eqn{L} networks, the encoding of texts
+#' \eqn{i} and \eqn{j} is \eqn{X_{ij} = \sum_k p_k^{a_{ij}^{(k)}}}, where
+#' \eqn{p_k} is the \eqn{k}-th prime and \eqn{a_{ij}^{(k)}} the edge weight in
+#' network \eqn{k} (0 if not linked). A network that does not link the pair
+#' still adds \eqn{p_k^0 = 1}, so a pair never linked gets \eqn{X_{ij} = L}
+#' (the floor), and the diagonal is \eqn{\sum_k p_k} (the ceiling). The
+#' floor-free network is
+#' \deqn{R_{ij} = \frac{X_{ij} - L}{\sum_k p_k - L},}
+#' the share of the largest possible linkage: 0 = never linked, 1 = linked
+#' with weight 1 in every network. Negative values (possible only with
+#' negative edge weights) are set to 0, and the diagonal to 0. Because walktrap
+#' is a random walk, the floor acts as a constant edge between every pair of
+#' texts; \code{remove_floor = TRUE} drops it. In tests on 3 datasets x 3
+#' models, neither version was better at the chosen step (floor-free: higher
+#' NMI in 5 of 9), but the floor-free version was less sensitive to the number
+#' of steps and tended to find more communities.
 #'
 #' @examples
 #' \dontrun{
@@ -174,16 +202,24 @@ ega_classify <- function(embeddings,
 #' voyage_emb <- embed_voyage(extraversion$text)
 #' combined_layers <- c(emb$layers, list(voyage = voyage_emb))
 #' pw_combined <- prime_weight_encode(combined_layers)
+#'
+#' # Walktrap on the floor-free network instead
+#' pw_ff <- prime_weight_encode(emb$layers, remove_floor = TRUE)
+#'
+#' # Plot it, next to the true labels
+#' plot_prime_weight(pw, true_labels = extraversion$subtopic)
 #' }
 #'
-#' @seealso \code{\link{ega_classify}}, \code{\link{embed_local}}
+#' @seealso \code{\link{plot_prime_weight}}, \code{\link{match_communities}},
+#'   \code{\link{ega_classify}}, \code{\link{embed_local}}
 #'
 #' @export
 prime_weight_encode <- function(layers,
                                 model = "tmfg",
                                 uni_method = "expand",
                                 steps_range = 2:25,
-                                true_labels = NULL) {
+                                true_labels = NULL,
+                                remove_floor = FALSE) {
 
   if (!requireNamespace("EGAnet", quietly = TRUE)) {
     stop("Package 'EGAnet' is required. Install with: install.packages('EGAnet')",
@@ -237,6 +273,10 @@ prime_weight_encode <- function(layers,
 
   encoding_matrix <- Reduce("+", prime_weights)
 
+  # Floor-free network: every network adds p^0 = 1 to pairs it does not link
+  network <- .prime_floor_free(encoding_matrix, prime_numbers)
+  detection_matrix <- if (isTRUE(remove_floor)) network else encoding_matrix
+
   # Search optimal walktrap steps
   step_results <- data.frame(steps = integer(), n_communities = integer())
   all_communities <- list()
@@ -245,7 +285,7 @@ prime_weight_encode <- function(layers,
     wc <- do.call(
       what = EGAnet::community.detection,
       args = list(
-        network = encoding_matrix,
+        network = detection_matrix,
         algorithm = "walktrap",
         membership.only = TRUE,
         steps = step
@@ -268,7 +308,8 @@ prime_weight_encode <- function(layers,
   best_step <- step_results$steps[step_results$n_communities == mode_n][1]
   best_communities <- all_communities[[as.character(best_step)]]
 
-  cat("Best walktrap step:", best_step, "->", mode_n, "communities\n")
+  cat("Best walktrap step", if (isTRUE(remove_floor)) "(floor-free network):" else "(raw encoding):",
+      best_step, "->", mode_n, "communities\n")
 
   list(
     best_communities = best_communities,
@@ -277,6 +318,25 @@ prime_weight_encode <- function(layers,
     step_results = step_results,
     all_communities = all_communities,
     encoding_matrix = encoding_matrix,
+    network = network,
+    remove_floor = isTRUE(remove_floor),
+    primes = unname(prime_numbers),
     layer_egas = layer_egas
   )
+}
+
+
+# Floor-free prime-weight network, rescaled to 0-1 (internal)
+# X: encoding matrix (sum over L networks of p_k ^ network_k); primes: the L primes
+.prime_floor_free <- function(X, primes) {
+  X <- as.matrix(X)
+  L <- length(primes)
+  R <- (X - L) / (sum(primes) - L)
+  R[R < 0] <- 0                     # only possible with negative edge weights
+  diag(R) <- 0
+  R <- (R + t(R)) / 2
+  if (is.null(colnames(R))) {
+    colnames(R) <- rownames(R) <- paste0("doc_", seq_len(ncol(R)))
+  }
+  R
 }

@@ -90,7 +90,7 @@ NULL
 #'
 #' @export
 classify_direct <- function(texts, classes,
-                            model = "openai/gpt-oss-120b",
+                            model = "llama-3.3-70b-versatile",
                             chunk_size = 40, shuffle = TRUE, seed = 2026) {
   classes <- as.character(classes)
 
@@ -161,7 +161,7 @@ Example format: {"1": "category_a", "2": "category_b"}',
 #'
 #' @export
 classify_fewshot <- function(texts, classes, examples,
-                             model = "openai/gpt-oss-120b",
+                             model = "llama-3.3-70b-versatile",
                              chunk_size = 40, shuffle = TRUE, seed = 2026) {
   classes <- as.character(classes)
 
@@ -247,7 +247,7 @@ and values are the category names.',
 #'
 #' @export
 classify_cot <- function(texts, classes,
-                         model = "openai/gpt-oss-120b",
+                         model = "llama-3.3-70b-versatile",
                          chunk_size = 40, shuffle = TRUE, seed = 2026) {
   classes <- as.character(classes)
 
@@ -322,7 +322,7 @@ Return ONLY valid JSON.',
 #'
 #' @export
 classify_json <- function(texts, classes,
-                          model = "openai/gpt-oss-120b",
+                          model = "llama-3.3-70b-versatile",
                           chunk_size = 40, shuffle = TRUE, seed = 2026) {
   classes <- as.character(classes)
 

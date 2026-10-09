@@ -9,7 +9,7 @@ discover_topics(
   n_topics = 4,
   embeddings = NULL,
   top_k = 20,
-  model = "openai/gpt-oss-120b",
+  model = "llama-3.3-70b-versatile",
   embed_model = "voyage-4"
 )
 }

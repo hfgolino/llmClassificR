@@ -1,6 +1,6 @@
 Package: llmClassificR
 Title: Text Classification with Large Language Models in R
-Version: 0.2.1
+Version: 0.2.2
 Authors@R: 
     person("Hudson", "Golino", , "hfg9s@virginia.edu", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-1601-1447"))
@@ -22,16 +22,35 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 LazyData: true
-Depends: R (>= 4.1.0)
-Imports: reticulate, jsonlite, stats, cluster, httr2 (>= 1.1.1), utils,
-        graphics, callr
-Suggests: EGAnet, aricode, glmnet, Matrix, tm, SnowballC, ggpubr,
-        ggplot2, tidyr, dplyr, corrplot, knitr, rmarkdown, testthat (>=
-        3.0.0), withr
+Depends: 
+    R (>= 4.1.0)
+Imports:
+    reticulate,
+    jsonlite,
+    stats,
+    cluster,
+    httr2 (>= 1.1.1),
+    utils,
+    graphics,
+    grDevices,
+    callr,
+    clue
+Suggests:
+    EGAnet,
+    aricode,
+    glmnet,
+    Matrix,
+    tm,
+    SnowballC,
+    ggpubr,
+    ggplot2,
+    tidyr,
+    dplyr,
+    corrplot,
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0),
+    withr
 Config/testthat/edition: 3
 URL: https://github.com/hfgolino/llmClassificR
 BugReports: https://github.com/hfgolino/llmClassificR/issues
-NeedsCompilation: no
-Packaged: 2026-10-06 13:09:12 UTC; root
-Author: Hudson Golino [aut, cre] (<https://orcid.org/0000-0002-1601-1447>)
-Maintainer: Hudson Golino <hfg9s@virginia.edu>

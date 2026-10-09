@@ -8,7 +8,7 @@ classify_fewshot(
   texts,
   classes,
   examples,
-  model = "openai/gpt-oss-120b",
+  model = "llama-3.3-70b-versatile",
   chunk_size = 40,
   shuffle = TRUE,
   seed = 2026

@@ -107,7 +107,7 @@ retrieve_similar <- function(query, doc_embeddings, texts, top_k = 10,
 #' @export
 rag_generate <- function(query, doc_embeddings, texts,
                          top_k = 10,
-                         model = "openai/gpt-oss-120b",
+                         model = "llama-3.3-70b-versatile",
                          max_tokens = 500L,
                          embed_model = "voyage-4") {
 
@@ -187,7 +187,7 @@ discover_topics <- function(texts,
                             n_topics = 4,
                             embeddings = NULL,
                             top_k = 20,
-                            model = "openai/gpt-oss-120b",
+                            model = "llama-3.3-70b-versatile",
                             embed_model = "voyage-4") {
 
   # Embed if needed
@@ -290,7 +290,7 @@ Return ONLY valid JSON.',
 classify_with_rag <- function(texts,
                               n_topics = 4,
                               embeddings = NULL,
-                              model = "openai/gpt-oss-120b",
+                              model = "llama-3.3-70b-versatile",
                               embed_model = "voyage-4") {
 
   # Step 1: Embed

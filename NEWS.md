@@ -1,3 +1,25 @@
+# llmClassificR 0.2.2
+
+* `prime_weight_encode()` gains `remove_floor` and returns the floor-free
+  network. Every layer network adds $p^0 = 1$ to the pairs of texts it does
+  not link, so pairs never linked get the number of networks $L$ (the floor)
+  and walktrap sees a constant edge between every pair. The new `network`
+  element is the floor-free encoding rescaled to 0-1,
+  $R = (X - L) / (\sum_k p_k - L)$, with a zero diagonal.
+  `remove_floor = TRUE` runs walktrap on it; the default (`FALSE`) keeps the
+  raw encoding, so results from earlier versions are unchanged. The output
+  also gains `remove_floor` and `primes`.
+* New `plot_prime_weight()`: draws the floor-free prime-weight network with
+  EGAnet, colored by the communities. With `true_labels`, the communities are
+  renamed after the labels they overlap most, and a second panel shows the
+  same network colored by the true labels, with the same layout and the same
+  color per label (texts that change color are the disagreements). Works with
+  objects from earlier versions too.
+* New `match_communities()`: renames communities after the true labels with
+  the Hungarian algorithm (one label per community, maximum agreement);
+  leftover communities are named "Extra k".
+* clue (Hungarian algorithm) and grDevices are now imported.
+
 # llmClassificR 0.2.1
 
 * Fixes "R Session Aborted" crashes in RStudio when `embed_local()` runs late
