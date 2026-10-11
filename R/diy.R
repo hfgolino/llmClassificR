@@ -31,7 +31,7 @@
 #'
 #' @return A numeric matrix (texts x dimensions).
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' \dontrun{
@@ -148,7 +148,7 @@ cosine_scores <- function(text_embeddings, label_embeddings) {
 #'   given), \code{prediction}, \code{confidence} and one probability column
 #'   per class. The attribute \code{"scores"} holds the cosine matrix.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' # Offline, with the pre-computed MiniLM embeddings shipped with the package
@@ -242,7 +242,7 @@ classify_by_description <- function(texts = NULL, descriptions = NULL,
 #'   \code{shared_head} (the weights \code{w} plus settings).
 #'   \code{predict()} returns a texts x labels probability matrix.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' data(minilm_embeddings)

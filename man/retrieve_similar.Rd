@@ -50,5 +50,5 @@ results$scores[1:3] # Their similarity scores
 \code{\link{rag_generate}}, \code{\link{discover_topics}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

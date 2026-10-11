@@ -62,5 +62,5 @@ compute_nmi(truth, c("Friendly", NA, "Positive", "Positive", "Assertive", NA),
 \code{\link{evaluate_classification}}, \code{\link{compare_methods}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

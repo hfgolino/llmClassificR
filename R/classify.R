@@ -44,7 +44,7 @@ NULL
 #'
 #' @param texts Character vector of texts to classify.
 #' @param classes Character vector of possible category labels.
-#' @param model Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.
+#' @param model Groq model to use. Default is \code{"openai/gpt-oss-120b"}.
 #'   See \code{\link{list_models}} for options.
 #' @param chunk_size Number of texts per API call. Default \code{40};
 #'   \code{NULL} sends all texts in one call.
@@ -62,7 +62,7 @@ NULL
 #'     \code{NA} if the model gave no valid answer)}
 #' }
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #' @examples
 #' \dontrun{
 #' data(extraversion)
@@ -90,7 +90,7 @@ NULL
 #'
 #' @export
 classify_direct <- function(texts, classes,
-                            model = "llama-3.3-70b-versatile",
+                            model = "openai/gpt-oss-120b",
                             chunk_size = 40, shuffle = TRUE, seed = 2026) {
   classes <- as.character(classes)
 
@@ -161,7 +161,7 @@ Example format: {"1": "category_a", "2": "category_b"}',
 #'
 #' @export
 classify_fewshot <- function(texts, classes, examples,
-                             model = "llama-3.3-70b-versatile",
+                             model = "openai/gpt-oss-120b",
                              chunk_size = 40, shuffle = TRUE, seed = 2026) {
   classes <- as.character(classes)
 
@@ -247,7 +247,7 @@ and values are the category names.',
 #'
 #' @export
 classify_cot <- function(texts, classes,
-                         model = "llama-3.3-70b-versatile",
+                         model = "openai/gpt-oss-120b",
                          chunk_size = 40, shuffle = TRUE, seed = 2026) {
   classes <- as.character(classes)
 
@@ -322,7 +322,7 @@ Return ONLY valid JSON.',
 #'
 #' @export
 classify_json <- function(texts, classes,
-                          model = "llama-3.3-70b-versatile",
+                          model = "openai/gpt-oss-120b",
                           chunk_size = 40, shuffle = TRUE, seed = 2026) {
   classes <- as.character(classes)
 
@@ -388,7 +388,7 @@ Return ONLY valid JSON.',
 #'   and (if \code{with_confidence = TRUE}) \code{confidence} and
 #'   \code{reasoning}.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' # The schema sent to the model (runs without an API key)
@@ -503,9 +503,14 @@ classification_schema <- function(classes, with_confidence = TRUE) {
 #' and takes a majority vote. Ties are broken by the order of \code{models}.
 #'
 #' @inheritParams classify_direct
-#' @param models Character vector of Groq model names. Default uses three
-#'   production models: \code{llama-3.3-70b-versatile},
-#'   \code{llama-3.1-8b-instant} and \code{openai/gpt-oss-20b}.
+#' @param models Character vector of Groq model names. The default uses three
+#'   models available on Groq's free tier, from two model families:
+#'   \code{openai/gpt-oss-20b}, \code{openai/gpt-oss-120b} (OpenAI
+#'   open-weight reasoning models) and \code{qwen/qwen3.8-27b} (Alibaba Qwen,
+#'   a preview model, October 2026). Groq retired \code{llama-3.1-8b-instant}
+#'   and \code{llama-3.3-70b-versatile} for free and developer-tier keys on
+#'   August 16, 2026; check \code{\link{list_models}} for the models your key
+#'   can use today.
 #'
 #' @inheritSection batch_settings Batch settings
 #'
@@ -537,9 +542,9 @@ classification_schema <- function(classes, with_confidence = TRUE) {
 #'
 #' @export
 classify_ensemble <- function(texts, classes,
-                              models = c("llama-3.3-70b-versatile",
-                                         "llama-3.1-8b-instant",
-                                         "openai/gpt-oss-20b"),
+                              models = c("openai/gpt-oss-20b",
+                                         "openai/gpt-oss-120b",
+                                         "qwen/qwen3.8-27b"),
                               chunk_size = 40, shuffle = TRUE, seed = 2026) {
   classes <- as.character(classes)
 
@@ -607,7 +612,7 @@ classify_ensemble <- function(texts, classes,
 #'   probability column per class. The attribute \code{"votes"} holds the
 #'   texts x runs matrix of individual answers.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' \dontrun{
@@ -623,7 +628,7 @@ classify_ensemble <- function(texts, classes,
 #' @export
 classify_self_consistency <- function(texts, classes, n_runs = 5,
                                       temperature = 0.8,
-                                      model = "llama-3.3-70b-versatile",
+                                      model = "openai/gpt-oss-120b",
                                       chunk_size = 40, seed = 2026) {
   classes <- as.character(classes)
   votes <- vapply(seq_len(n_runs), function(r) {
@@ -711,7 +716,7 @@ and values are the category names.',
 #'
 #' @export
 classify_scores <- function(texts, classes,
-                            model = "llama-3.3-70b-versatile",
+                            model = "openai/gpt-oss-120b",
                             chunk_size = 40, shuffle = TRUE, seed = 2026) {
   classes <- as.character(classes)
 
@@ -765,6 +770,15 @@ Return ONLY valid JSON.',
 }
 
 
+# Default persona of classify_judge(), kept out of the usage line (which would
+# be too wide for the manual). Identical to the default of earlier versions.
+.default_judge_persona <- paste(
+  "You are an expert personality psychologist acting as a text classifier.",
+  "Your job is to carefully read personality descriptions and classify them into categories.",
+  "You must provide reasoning for your classification, citing specific evidence from the text.",
+  sep = "\n")
+
+
 #' LLM-as-Judge classification with evidence
 #'
 #' Uses the LLM as an expert judge that provides evidence extraction and
@@ -774,7 +788,12 @@ Return ONLY valid JSON.',
 #'
 #' @inheritParams classify_direct
 #' @param persona Character string describing the expert persona for the
-#'   system prompt. Default is a personality psychologist.
+#'   system prompt. \code{NULL} (the default) uses a personality
+#'   psychologist: "You are an expert personality psychologist acting as a
+#'   text classifier. Your job is to carefully read personality descriptions
+#'   and classify them into categories. You must provide reasoning for your
+#'   classification, citing specific evidence from the text." (one sentence
+#'   per line).
 #'
 #' @inheritSection batch_settings Batch settings
 #'
@@ -812,12 +831,11 @@ Return ONLY valid JSON.',
 #'
 #' @export
 classify_judge <- function(texts, classes,
-                           persona = "You are an expert personality psychologist acting as a text classifier.
-Your job is to carefully read personality descriptions and classify them into categories.
-You must provide reasoning for your classification, citing specific evidence from the text.",
-                           model = "llama-3.3-70b-versatile",
+                           persona = NULL,
+                           model = "openai/gpt-oss-120b",
                            chunk_size = 40, shuffle = TRUE, seed = 2026) {
   classes <- as.character(classes)
+  if (is.null(persona)) persona <- .default_judge_persona
 
   chunk_fun <- function(x) {
     prompt <- sprintf(
@@ -871,7 +889,7 @@ Return ONLY valid JSON.',
 #'
 #' @param prompt The user prompt.
 #' @param system_prompt Optional system prompt to set a persona or context.
-#' @param model Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.
+#' @param model Groq model to use. Default is \code{"openai/gpt-oss-120b"}.
 #' @param temperature Creativity parameter (0 = deterministic, 1 = creative).
 #'   Default is \code{0.3}.
 #' @param max_tokens Maximum response length (sent as
@@ -883,12 +901,22 @@ Return ONLY valid JSON.',
 #'   with \code{tool_choice = "required"}. They override the package defaults
 #'   (e.g., \code{reasoning_effort = "medium"}).
 #'
-#' @return A character string containing the model's response.
+#' @return A character string of class \code{llm_text} with the model's
+#'   response. Its \code{"usage"} attribute holds the token counts reported by
+#'   Groq (\code{prompt_tokens} and \code{completion_tokens}), which is useful
+#'   to track costs and rate limits. The class only changes how the text is
+#'   printed: \code{cat()}, \code{paste()} and other string functions work as
+#'   usual, and \code{as.character()} returns a plain string without the
+#'   attribute.
 #'
 #' @examples
 #' \dontrun{
 #' # Simple generation
 #' llm_generate("Generate 3 survey items measuring academic self-efficacy.")
+#'
+#' # Tokens used by the request
+#' items <- llm_generate("Generate 3 survey items measuring grit.")
+#' attr(items, "usage")
 #'
 #' # With system prompt
 #' llm_generate(
@@ -910,13 +938,29 @@ Return ONLY valid JSON.',
 #' @export
 llm_generate <- function(prompt,
                          system_prompt = NULL,
-                         model = "llama-3.3-70b-versatile",
+                         model = "openai/gpt-oss-120b",
                          temperature = 0.3,
                          max_tokens = 500L,
                          ...) {
   out <- .groq_chat(prompt, model = model, system = system_prompt,
                     temperature = temperature, max_tokens = as.integer(max_tokens),
                     extra = list(...))
-  attr(out, "usage") <- NULL
-  out
+  structure(out, class = "llm_text")   # keeps the "usage" attribute
+}
+
+
+#' Print generated text
+#'
+#' Prints the text returned by \code{\link{llm_generate}} without its
+#' \code{"usage"} attribute and class. Use \code{attr(x, "usage")} to see the
+#' token counts.
+#'
+#' @param x An object of class \code{llm_text}.
+#' @param ... Further arguments passed to \code{print()}.
+#'
+#' @return \code{x}, invisibly.
+#' @export
+print.llm_text <- function(x, ...) {
+  print(as.character(x), ...)
+  invisible(x)
 }

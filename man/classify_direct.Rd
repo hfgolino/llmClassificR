@@ -7,7 +7,7 @@
 classify_direct(
   texts,
   classes,
-  model = "llama-3.3-70b-versatile",
+  model = "openai/gpt-oss-120b",
   chunk_size = 40,
   shuffle = TRUE,
   seed = 2026
@@ -18,7 +18,7 @@ classify_direct(
 
 \item{classes}{Character vector of possible category labels.}
 
-\item{model}{Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.
+\item{model}{Groq model to use. Default is \code{"openai/gpt-oss-120b"}.
 See \code{\link{list_models}} for options.}
 
 \item{chunk_size}{Number of texts per API call. Default \code{40};
@@ -90,5 +90,5 @@ results_one_call <- classify_direct(extraversion$text, unique(extraversion$subto
 \code{\link{compare_methods}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

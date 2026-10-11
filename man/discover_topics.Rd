@@ -9,7 +9,7 @@ discover_topics(
   n_topics = 4,
   embeddings = NULL,
   top_k = 20,
-  model = "llama-3.3-70b-versatile",
+  model = "openai/gpt-oss-120b",
   embed_model = "voyage-4"
 )
 }
@@ -24,7 +24,7 @@ embeddings are computed via \code{\link{embed_voyage}}.}
 \item{top_k}{Number of documents to retrieve for topic analysis. Default
 is \code{20}.}
 
-\item{model}{Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.}
+\item{model}{Groq model to use. Default is \code{"openai/gpt-oss-120b"}.}
 
 \item{embed_model}{Voyage AI model for embeddings. Default \code{"voyage-4"}.}
 }
@@ -58,5 +58,5 @@ results <- classify_direct(extraversion$text, classes = topics$label)
 \code{\link{classify_with_rag}}, \code{\link{rag_generate}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

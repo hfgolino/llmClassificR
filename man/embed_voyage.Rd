@@ -72,5 +72,5 @@ linear_probe(embeddings, extraversion$subtopic)
 \code{\link{retrieve_similar}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

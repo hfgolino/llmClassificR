@@ -32,7 +32,7 @@
 #'   you share.
 #'
 #' @return Invisible \code{NULL}.
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #' @examples
 #' \dontrun{
 #' # Recommended: key stored in ~/.Renviron as TYPESAFE_API_KEY=...
@@ -101,7 +101,7 @@ set_typesafe_key <- function(key = Sys.getenv("TYPESAFE_API_KEY")) {
 #' @return A list that can be used as one element of the \code{questions}
 #'   argument of \code{\link{jev_ask}} and \code{\link{jev_ask_many}}.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' # These helpers only build lists, so they run without an API key
@@ -261,7 +261,7 @@ jev_score <- function(instructions, levels) {
 #' training data are unknown, and results can change between versions.
 #' Pin the model version and validate against human coding.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' \dontrun{
@@ -311,7 +311,7 @@ jev_ask <- function(text, questions, model = "jev-1.13.0") {
 #'   attribute \code{"usage"} holds a one-row data.frame with the number of
 #'   texts, failures, input tokens, cost in USD and seconds.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' \dontrun{
@@ -564,7 +564,7 @@ jev_parse_score <- function(responses, question, n_levels = NULL) {
 #'   column per class. Failed requests give \code{NA}. The attribute
 #'   \code{"usage"} holds tokens and cost.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' \dontrun{
@@ -626,7 +626,7 @@ jev_classify <- function(texts, criteria,
 #' @return A data.frame with \code{text_id}, \code{text} and one column per
 #'   label with the probability that the statement is true.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' \dontrun{
@@ -682,7 +682,7 @@ jev_multilabel <- function(texts, statements, true = NULL, false = NULL,
 #'   expected level, a probability-weighted average), \code{level} (the most
 #'   probable level), \code{confidence} and one probability column per level.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' \dontrun{

@@ -28,7 +28,7 @@
 #'   \item{ega_object}{The full EGA object from EGAnet}
 #' }
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #' @examples
 #' \dontrun{
 #' data(extraversion)

@@ -4,7 +4,7 @@
 \alias{set_groq_key}
 \title{Set Groq API key}
 \usage{
-set_groq_key(key = Sys.getenv("GROQ_API_KEY"), max_retries = 5L)
+set_groq_key(key = Sys.getenv("GROQ_API_KEY"), max_retries = 5L, timeout = 120)
 }
 \arguments{
 \item{key}{Your Groq API key as a character string. Defaults to the
@@ -16,6 +16,13 @@ with no arguments, so keys never appear in scripts you share.}
 
 \item{max_retries}{Number of automatic retries (with exponential backoff)
 for rate-limit (429) and server errors. Default is \code{5}.}
+
+\item{timeout}{Maximum number of seconds to wait for each Groq request.
+A request that takes longer fails with a timeout error and is retried
+(up to \code{max_retries} times). Default is \code{120}, twice the
+60-second default of the Groq Python SDK, so that reasoning models
+answering large batches have time to finish. A single request can also
+set its own limit, for example \code{llm_generate(prompt, timeout = 30)}.}
 }
 \value{
 Invisible \code{NULL}.
@@ -35,5 +42,5 @@ set_groq_key("gsk_abc123...")
 
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

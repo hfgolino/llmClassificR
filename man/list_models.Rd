@@ -26,8 +26,8 @@ a curated static list.
 }
 \examples{
 \dontrun{
-# After setting API key, queries live
-set_groq_key("your-key")
+# After setting the API key (read from ~/.Renviron), queries live
+set_groq_key()
 list_models()
 
 # Works without API key (static fallback)
@@ -39,5 +39,5 @@ grep("gpt-oss|qwen3", list_models()$model, value = TRUE)
 
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

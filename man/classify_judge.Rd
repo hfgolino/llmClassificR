@@ -7,9 +7,8 @@
 classify_judge(
   texts,
   classes,
-  persona =
-    "You are an expert personality psychologist acting as a text classifier.\\nYour job is to carefully read personality descriptions and classify them into categories.\\nYou must provide reasoning for your classification, citing specific evidence from the text.",
-  model = "llama-3.3-70b-versatile",
+  persona = NULL,
+  model = "openai/gpt-oss-120b",
   chunk_size = 40,
   shuffle = TRUE,
   seed = 2026
@@ -21,9 +20,14 @@ classify_judge(
 \item{classes}{Character vector of possible category labels.}
 
 \item{persona}{Character string describing the expert persona for the
-system prompt. Default is a personality psychologist.}
+system prompt. \code{NULL} (the default) uses a personality
+psychologist: "You are an expert personality psychologist acting as a
+text classifier. Your job is to carefully read personality descriptions
+and classify them into categories. You must provide reasoning for your
+classification, citing specific evidence from the text." (one sentence
+per line).}
 
-\item{model}{Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.
+\item{model}{Groq model to use. Default is \code{"openai/gpt-oss-120b"}.
 See \code{\link{list_models}} for options.}
 
 \item{chunk_size}{Number of texts per API call. Default \code{40};

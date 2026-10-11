@@ -83,5 +83,5 @@ probe_layers(emb$layers, extraversion$subtopic, ega = TRUE)
 \code{\link{probe_layers}}, \code{\link{embed_sentences}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

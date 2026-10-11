@@ -9,7 +9,7 @@ rag_generate(
   doc_embeddings,
   texts,
   top_k = 10,
-  model = "llama-3.3-70b-versatile",
+  model = "openai/gpt-oss-120b",
   max_tokens = 500L,
   embed_model = "voyage-4"
 )
@@ -23,7 +23,7 @@ rag_generate(
 
 \item{top_k}{Number of documents to retrieve as context. Default is \code{10}.}
 
-\item{model}{Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.}
+\item{model}{Groq model to use. Default is \code{"openai/gpt-oss-120b"}.}
 
 \item{max_tokens}{Maximum response length. Default is \code{500}.}
 
@@ -36,6 +36,8 @@ A list with:
 \item{answer}{The generated answer}
 \item{retrieved}{The retrieved document texts used as context}
 \item{scores}{Cosine similarity scores of retrieved documents}
+\item{usage}{Token counts of the Groq request (\code{prompt_tokens} and
+\code{completion_tokens}), or \code{NULL} if Groq did not report them}
 }
 }
 \description{
@@ -61,5 +63,5 @@ cat(result$answer)
 \code{\link{retrieve_similar}}, \code{\link{discover_topics}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

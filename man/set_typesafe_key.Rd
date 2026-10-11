@@ -33,5 +33,5 @@ set_typesafe_key()
 \code{\link{jev_classify}}, \code{\link{jev_ask}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

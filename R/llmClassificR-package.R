@@ -182,7 +182,7 @@
 #' compare_methods(
 #'   true_labels = extraversion$subtopic,
 #'   "Bag-of-words" = bow$predictions,
-#'   "Llama 3.3 70B" = res_llm,
+#'   "GPT-OSS 120B" = res_llm,
 #'   "Jev" = res_jev
 #' )
 #'

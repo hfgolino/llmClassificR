@@ -50,5 +50,5 @@ plot(quality$layer_number, quality$combined_score, type = "b",
 \code{\link{embed_local}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

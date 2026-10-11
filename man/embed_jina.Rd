@@ -16,9 +16,12 @@ embed_jina(
 \item{texts}{Character vector of texts to embed.}
 
 \item{model}{Jina AI model name. Default is \code{"jina-embeddings-v3"}.
-Other options include \code{"jina-embeddings-v4"} (multimodal, 2048-dim),
-\code{"jina-embeddings-v2-base-en"} (768-dim), and
-\code{"jina-clip-v2"} (text-image, 1024-dim).
+Other options include the v5 text models
+\code{"jina-embeddings-v5-text-small"} (677M parameters, 1024-dim,
+32,768 tokens) and \code{"jina-embeddings-v5-text-nano"} (239M
+parameters, 768-dim, 8,192 tokens), \code{"jina-embeddings-v4"}
+(multimodal, 2048-dim), \code{"jina-embeddings-v2-base-en"} (768-dim),
+and \code{"jina-clip-v2"} (text-image, 1024-dim).
 See \code{\link{list_jina_models}} for all available models.}
 
 \item{task}{Task type for the embeddings. Default is \code{"text-matching"}.
@@ -26,10 +29,15 @@ Options: \code{"retrieval.passage"} (for documents to be searched),
 \code{"retrieval.query"} (for search queries),
 \code{"text-matching"} (for similarity comparison),
 \code{"classification"} (for classification tasks),
-\code{"separation"} (for clustering/separation tasks).}
+\code{"separation"} (for clustering/separation tasks).
+Task names differ by model family: the v5 text models list
+\code{"retrieval"}, \code{"text-matching"}, \code{"clustering"} and
+\code{"classification"} on their model cards, and
+\code{"text-matching"} works with v3, v4 and v5.}
 
 \item{dimensions}{Optional integer to reduce embedding dimensions via
-Matryoshka Representation Learning (supported by v3 and v4). For example,
+Matryoshka Representation Learning (supported by v3, v4 and v5; the v5
+text models can be truncated down to 32 dimensions). For example,
 \code{dimensions = 256} returns 256-dim instead of the default 1024.
 Set to \code{NULL} (default) for full dimensions.}
 
@@ -50,17 +58,25 @@ support. Uses pure R (httr2) with no Python dependency.
 \details{
 Jina AI offers generous free tier limits (1M tokens for free accounts).
 The v3 model supports 89 languages and Matryoshka dimensions (256, 512,
-768, 1024). The API is called via pure R (httr2), so no Python environment
-is needed for embedding-only workflows.
+768, 1024). The v5 text models (\code{jina-embeddings-v5-text-small} and
+\code{jina-embeddings-v5-text-nano}) are newer multilingual models (nano has
+less than half the parameters of v3); v3 remains the default so that results
+stay comparable with earlier versions of the package. The API is called via
+pure R (httr2), so no Python environment is needed for embedding-only
+workflows.
 }
 \examples{
 \dontrun{
 data(extraversion)
-set_jina_key("jina_abc123...")
+set_jina_key()   # reads JINA_API_KEY from ~/.Renviron
 
 # Default: v3, 1024 dimensions
 embeddings <- embed_jina(extraversion$text)
 dim(embeddings)  # 120 x 1024
+
+# v5 text model (nano: 768 dimensions)
+emb_v5 <- embed_jina(extraversion$text, model = "jina-embeddings-v5-text-nano")
+dim(emb_v5)  # 120 x 768
 
 # Reduced dimensions (faster, smaller)
 emb_small <- embed_jina(extraversion$text, dimensions = 256)
@@ -76,5 +92,5 @@ result <- ega_classify(embeddings)
 \code{\link{list_jina_models}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

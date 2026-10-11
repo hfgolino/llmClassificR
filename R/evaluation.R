@@ -26,7 +26,7 @@
 #'
 #' @return A single number between 0 and 1.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' truth <- c("Friendly", "Friendly", "Positive", "Positive", "Assertive", "Assertive")
@@ -115,7 +115,7 @@ compute_nmi <- function(truth, pred, na = c("singleton", "category", "drop"),
 #'   \code{macro_F1}, \code{kappa}, \code{NMI} and \code{n_invalid}. Use
 #'   \code{rbind()} to combine several methods.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' truth <- c("Friendly", "Positive", "Assertive", "Energetic",

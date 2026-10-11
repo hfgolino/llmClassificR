@@ -56,5 +56,5 @@ tapply(intensity$score, neuroticism$subtopic, mean)
 \code{\link{jev_score}}, \code{\link{jev_classify}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

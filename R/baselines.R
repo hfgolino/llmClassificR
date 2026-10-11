@@ -324,7 +324,7 @@ top_terms <- function(X, y, n = 8, alpha = 0.5, seed = 2026) {
 #'   \code{\link{cv_logistic}}), \code{top_terms} and the feature matrix
 #'   \code{X}.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' data(extraversion)

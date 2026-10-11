@@ -64,5 +64,5 @@ hello$answers$level$score
 \code{\link{jev_ask_many}}, \code{\link{jev_classify}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

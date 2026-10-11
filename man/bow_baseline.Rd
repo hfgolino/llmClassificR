@@ -51,5 +51,5 @@ if (requireNamespace("tm", quietly = TRUE) && requireNamespace("glmnet", quietly
 \code{\link{learning_curve}}, \code{\link{compare_methods}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

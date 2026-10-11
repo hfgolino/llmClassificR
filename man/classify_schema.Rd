@@ -79,5 +79,5 @@ evaluate_classification(extraversion$subtopic, res$prediction, "Strict schema")
 \code{\link{classify_json}}, \code{\link{generate_labeled_texts}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

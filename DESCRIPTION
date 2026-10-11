@@ -1,6 +1,6 @@
 Package: llmClassificR
 Title: Text Classification with Large Language Models in R
-Version: 0.2.2
+Version: 0.2.3
 Authors@R: 
     person("Hudson", "Golino", , "hfg9s@virginia.edu", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0002-1601-1447"))

@@ -69,5 +69,5 @@ compare_methods(
 \code{\link{evaluate_classification}}, \code{\link{compute_nmi}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

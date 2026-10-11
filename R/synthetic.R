@@ -27,7 +27,7 @@
 #'   \code{text}. Check its quality with \code{\link{diversity_report}}
 #'   before using it.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' \dontrun{

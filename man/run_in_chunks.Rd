@@ -66,5 +66,5 @@ res <- run_in_chunks(extraversion$text, function(x) {
 \code{\link{classify_direct}}, \code{\link{normalize_labels}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

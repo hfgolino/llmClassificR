@@ -54,5 +54,5 @@ res <- classify_by_description(text_embeddings = E, label_embeddings = L)
 \code{\link{classify_by_description}}, \code{\link{minilm_embeddings}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

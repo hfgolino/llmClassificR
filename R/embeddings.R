@@ -27,7 +27,7 @@
 #' Voyage AI offers a free token allowance for new accounts, more than enough
 #' for the course activities.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' \dontrun{
@@ -90,9 +90,12 @@ embed_voyage <- function(texts,
 #'
 #' @param texts Character vector of texts to embed.
 #' @param model Jina AI model name. Default is \code{"jina-embeddings-v3"}.
-#'   Other options include \code{"jina-embeddings-v4"} (multimodal, 2048-dim),
-#'   \code{"jina-embeddings-v2-base-en"} (768-dim), and
-#'   \code{"jina-clip-v2"} (text-image, 1024-dim).
+#'   Other options include the v5 text models
+#'   \code{"jina-embeddings-v5-text-small"} (677M parameters, 1024-dim,
+#'   32,768 tokens) and \code{"jina-embeddings-v5-text-nano"} (239M
+#'   parameters, 768-dim, 8,192 tokens), \code{"jina-embeddings-v4"}
+#'   (multimodal, 2048-dim), \code{"jina-embeddings-v2-base-en"} (768-dim),
+#'   and \code{"jina-clip-v2"} (text-image, 1024-dim).
 #'   See \code{\link{list_jina_models}} for all available models.
 #' @param task Task type for the embeddings. Default is \code{"text-matching"}.
 #'   Options: \code{"retrieval.passage"} (for documents to be searched),
@@ -100,8 +103,13 @@ embed_voyage <- function(texts,
 #'   \code{"text-matching"} (for similarity comparison),
 #'   \code{"classification"} (for classification tasks),
 #'   \code{"separation"} (for clustering/separation tasks).
+#'   Task names differ by model family: the v5 text models list
+#'   \code{"retrieval"}, \code{"text-matching"}, \code{"clustering"} and
+#'   \code{"classification"} on their model cards, and
+#'   \code{"text-matching"} works with v3, v4 and v5.
 #' @param dimensions Optional integer to reduce embedding dimensions via
-#'   Matryoshka Representation Learning (supported by v3 and v4). For example,
+#'   Matryoshka Representation Learning (supported by v3, v4 and v5; the v5
+#'   text models can be truncated down to 32 dimensions). For example,
 #'   \code{dimensions = 256} returns 256-dim instead of the default 1024.
 #'   Set to \code{NULL} (default) for full dimensions.
 #' @param batch_size Number of texts to send per API request. Default is
@@ -114,19 +122,27 @@ embed_voyage <- function(texts,
 #' @details
 #' Jina AI offers generous free tier limits (1M tokens for free accounts).
 #' The v3 model supports 89 languages and Matryoshka dimensions (256, 512,
-#' 768, 1024). The API is called via pure R (httr2), so no Python environment
-#' is needed for embedding-only workflows.
+#' 768, 1024). The v5 text models (\code{jina-embeddings-v5-text-small} and
+#' \code{jina-embeddings-v5-text-nano}) are newer multilingual models (nano has
+#' less than half the parameters of v3); v3 remains the default so that results
+#' stay comparable with earlier versions of the package. The API is called via
+#' pure R (httr2), so no Python environment is needed for embedding-only
+#' workflows.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' \dontrun{
 #' data(extraversion)
-#' set_jina_key("jina_abc123...")
+#' set_jina_key()   # reads JINA_API_KEY from ~/.Renviron
 #'
 #' # Default: v3, 1024 dimensions
 #' embeddings <- embed_jina(extraversion$text)
 #' dim(embeddings)  # 120 x 1024
+#'
+#' # v5 text model (nano: 768 dimensions)
+#' emb_v5 <- embed_jina(extraversion$text, model = "jina-embeddings-v5-text-nano")
+#' dim(emb_v5)  # 120 x 768
 #'
 #' # Reduced dimensions (faster, smaller)
 #' emb_small <- embed_jina(extraversion$text, dimensions = 256)
@@ -188,7 +204,10 @@ embed_jina <- function(texts,
 #' List Jina AI embedding models
 #'
 #' Returns a data.frame of available Jina AI embedding models with their
-#' specifications. No API key needed.
+#' specifications (static list, checked against \url{https://jina.ai/embeddings}
+#' in October 2026). No API key needed. Jina also offers multimodal v5 models
+#' (\code{jina-embeddings-v5-omni-small} and \code{jina-embeddings-v5-omni-nano})
+#' that are not listed because \code{\link{embed_jina}} sends text only.
 #'
 #' @return A data.frame with columns:
 #' \describe{
@@ -198,7 +217,7 @@ embed_jina <- function(texts,
 #'   \item{matryoshka}{Whether the model supports dimension reduction}
 #' }
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' list_jina_models()
@@ -207,6 +226,8 @@ embed_jina <- function(texts,
 list_jina_models <- function() {
   models <- data.frame(
     model = c(
+      "jina-embeddings-v5-text-small",
+      "jina-embeddings-v5-text-nano",
       "jina-embeddings-v4",
       "jina-embeddings-v3",
       "jina-clip-v2",
@@ -218,6 +239,8 @@ list_jina_models <- function() {
       "jina-embeddings-v2-small-en"
     ),
     description = c(
+      "Multilingual text, v5 (677M params, 1024-dim, 32K tokens)",
+      "Multilingual text, v5 (239M params, 768-dim, 8K tokens)",
       "Multimodal flagship (3.8B params, 2048-dim)",
       "Multilingual flagship (570M params, 1024-dim, 89 languages)",
       "Text-image embeddings (885M params, 1024-dim)",
@@ -228,8 +251,10 @@ list_jina_models <- function() {
       "Code base (137M params, 768-dim)",
       "English small (33M params, 512-dim)"
     ),
-    dimensions = c(2048L, 1024L, 1024L, 768L, 768L, 768L, 768L, 768L, 512L),
-    matryoshka = c(TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE),
+    dimensions = c(1024L, 768L, 2048L, 1024L, 1024L, 768L, 768L, 768L, 768L,
+                   768L, 512L),
+    matryoshka = c(TRUE, TRUE, TRUE, TRUE, FALSE, FALSE, FALSE, FALSE, FALSE,
+                   FALSE, FALSE),
     stringsAsFactors = FALSE
   )
 
@@ -333,7 +358,7 @@ list_jina_models <- function() {
 #' mean-pools over non-padding tokens to produce one vector per text per layer.
 #' This requires PyTorch and transformers to be installed in the environment.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' \dontrun{
@@ -533,7 +558,7 @@ embed_local <- function(texts,
 #'   \item{combined_score}{Z-score sum of all three metrics}
 #' }
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' \dontrun{

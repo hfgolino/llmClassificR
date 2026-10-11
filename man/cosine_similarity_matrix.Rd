@@ -24,5 +24,5 @@ image(sim_mat, main = "Cosine Similarity Matrix")
 
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

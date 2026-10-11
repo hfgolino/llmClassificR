@@ -25,5 +25,5 @@ set_jina_key()   # reads JINA_API_KEY from ~/.Renviron
 
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

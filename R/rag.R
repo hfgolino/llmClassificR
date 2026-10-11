@@ -21,7 +21,7 @@
 #'   \item{all_similarities}{Numeric vector of similarities for all documents}
 #' }
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' \dontrun{
@@ -75,7 +75,7 @@ retrieve_similar <- function(query, doc_embeddings, texts, top_k = 10,
 #' @param doc_embeddings A numeric matrix of document embeddings.
 #' @param texts Character vector of original texts.
 #' @param top_k Number of documents to retrieve as context. Default is \code{10}.
-#' @param model Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.
+#' @param model Groq model to use. Default is \code{"openai/gpt-oss-120b"}.
 #' @param max_tokens Maximum response length. Default is \code{500}.
 #' @param embed_model Voyage AI model used to embed the query (same family as
 #'   \code{doc_embeddings}). Default is \code{"voyage-4"}.
@@ -85,9 +85,11 @@ retrieve_similar <- function(query, doc_embeddings, texts, top_k = 10,
 #'   \item{answer}{The generated answer}
 #'   \item{retrieved}{The retrieved document texts used as context}
 #'   \item{scores}{Cosine similarity scores of retrieved documents}
+#'   \item{usage}{Token counts of the Groq request (\code{prompt_tokens} and
+#'     \code{completion_tokens}), or \code{NULL} if Groq did not report them}
 #' }
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #' @examples
 #' \dontrun{
 #' data(extraversion)
@@ -107,7 +109,7 @@ retrieve_similar <- function(query, doc_embeddings, texts, top_k = 10,
 #' @export
 rag_generate <- function(query, doc_embeddings, texts,
                          top_k = 10,
-                         model = "llama-3.3-70b-versatile",
+                         model = "openai/gpt-oss-120b",
                          max_tokens = 500L,
                          embed_model = "voyage-4") {
 
@@ -134,12 +136,14 @@ Provide a clear, concise answer based on the information in the documents above.
 
   answer <- .groq_chat(prompt, model = model, temperature = 0.2,
                        max_tokens = as.integer(max_tokens))
-  attr(answer, "usage") <- NULL
+  usage <- attr(answer, "usage")
+  attr(answer, "usage") <- NULL   # kept in its own element below
 
   list(
     answer = answer,
     retrieved = retrieved$texts,
-    scores = retrieved$scores
+    scores = retrieved$scores,
+    usage = usage
   )
 }
 
@@ -157,7 +161,7 @@ Provide a clear, concise answer based on the information in the documents above.
 #'   embeddings are computed via \code{\link{embed_voyage}}.
 #' @param top_k Number of documents to retrieve for topic analysis. Default
 #'   is \code{20}.
-#' @param model Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.
+#' @param model Groq model to use. Default is \code{"openai/gpt-oss-120b"}.
 #' @param embed_model Voyage AI model for embeddings. Default \code{"voyage-4"}.
 #'
 #' @return A data.frame with columns:
@@ -166,7 +170,7 @@ Provide a clear, concise answer based on the information in the documents above.
 #'   \item{description}{One-sentence description of the topic}
 #' }
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' \dontrun{
@@ -187,7 +191,7 @@ discover_topics <- function(texts,
                             n_topics = 4,
                             embeddings = NULL,
                             top_k = 20,
-                            model = "llama-3.3-70b-versatile",
+                            model = "openai/gpt-oss-120b",
                             embed_model = "voyage-4") {
 
   # Embed if needed
@@ -255,7 +259,7 @@ Return ONLY valid JSON.',
 #' @param texts Character vector of texts.
 #' @param n_topics Target number of topics. Default is \code{4}.
 #' @param embeddings Optional pre-computed embedding matrix.
-#' @param model Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.
+#' @param model Groq model to use. Default is \code{"openai/gpt-oss-120b"}.
 #' @param embed_model Voyage AI model for embeddings. Default \code{"voyage-4"}.
 #'
 #' @return A list with:
@@ -265,7 +269,7 @@ Return ONLY valid JSON.',
 #'   \item{embeddings}{The embedding matrix used}
 #' }
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' \dontrun{
@@ -290,7 +294,7 @@ Return ONLY valid JSON.',
 classify_with_rag <- function(texts,
                               n_topics = 4,
                               embeddings = NULL,
-                              model = "llama-3.3-70b-versatile",
+                              model = "openai/gpt-oss-120b",
                               embed_model = "voyage-4") {
 
   # Step 1: Embed

@@ -94,5 +94,5 @@ table(matched, traits)
 \code{\link{prime_weight_encode}}, \code{\link{match_communities}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

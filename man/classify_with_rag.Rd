@@ -8,7 +8,7 @@ classify_with_rag(
   texts,
   n_topics = 4,
   embeddings = NULL,
-  model = "llama-3.3-70b-versatile",
+  model = "openai/gpt-oss-120b",
   embed_model = "voyage-4"
 )
 }
@@ -19,7 +19,7 @@ classify_with_rag(
 
 \item{embeddings}{Optional pre-computed embedding matrix.}
 
-\item{model}{Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.}
+\item{model}{Groq model to use. Default is \code{"openai/gpt-oss-120b"}.}
 
 \item{embed_model}{Voyage AI model for embeddings. Default \code{"voyage-4"}.}
 }
@@ -58,5 +58,5 @@ compute_nmi(extraversion$subtopic, pipeline$classifications$prediction)
 \code{\link{discover_topics}}, \code{\link{classify_direct}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

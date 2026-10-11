@@ -35,7 +35,9 @@ mock_create <- function(model, messages, temperature = 0, max_completion_tokens 
   mock_log$calls[[length(mock_log$calls) + 1]] <- list(
     model = model, max_completion_tokens = max_completion_tokens,
     response_format = response_format, reasoning_effort = reasoning_effort,
-    temperature = temperature, prompt = prompt, n_messages = length(messages))
+    temperature = temperature, prompt = prompt, n_messages = length(messages),
+    system = if (length(messages) > 1) messages[[1]]$content else NULL,
+    extra = list(...))
 
   lines <- strsplit(prompt, "\n")[[1]]
   num <- regmatches(lines, regexec("^([0-9]+)\\. (.*)$", lines))

@@ -9,7 +9,7 @@ classify_self_consistency(
   classes,
   n_runs = 5,
   temperature = 0.8,
-  model = "llama-3.3-70b-versatile",
+  model = "openai/gpt-oss-120b",
   chunk_size = 40,
   seed = 2026
 )
@@ -23,7 +23,7 @@ classify_self_consistency(
 
 \item{temperature}{Sampling temperature. Default \code{0.8}.}
 
-\item{model}{Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.
+\item{model}{Groq model to use. Default is \code{"openai/gpt-oss-120b"}.
 See \code{\link{list_models}} for options.}
 
 \item{chunk_size}{Number of texts per API call. Default \code{40};
@@ -60,5 +60,5 @@ calibration_metrics(as.matrix(sc[, classes]), extraversion$subtopic, "Self-consi
 \code{\link{classify_ensemble}}, \code{\link{calibration_metrics}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

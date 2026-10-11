@@ -168,7 +168,7 @@ brier_score <- function(probs, truth) {
 #' repaired with \code{\link{fit_temperature}} without changing the
 #' predictions.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' data(minilm_embeddings)

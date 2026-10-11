@@ -59,5 +59,5 @@ rbind(
 \code{\link{compare_methods}}, \code{\link{calibration_metrics}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

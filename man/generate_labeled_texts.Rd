@@ -71,5 +71,5 @@ diversity_report(synthetic$text, synthetic$subtopic, "gpt-oss-20b")
 \code{\link{diversity_report}}, \code{\link{classify_schema}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

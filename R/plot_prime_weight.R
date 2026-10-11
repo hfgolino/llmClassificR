@@ -22,7 +22,7 @@
 #' @references Kuhn, H. W. (1955). The Hungarian method for the assignment
 #'   problem. \emph{Naval Research Logistics Quarterly, 2}(1-2), 83-97.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #' @examples
 #' found <- c(2, 2, 2, 1, 1, 3, 3, 3)
 #' truth <- c("A", "A", "B", "B", "B", "C", "C", "C")
@@ -103,7 +103,7 @@ match_communities <- function(found, truth, extra = "Extra") {
 #' When \code{true_labels} is given, the matched accuracy (the share of texts
 #' with the same color in both panels) is shown as a message.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #' @examples
 #' \dontrun{
 #' data(personality_descriptions)

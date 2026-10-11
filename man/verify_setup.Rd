@@ -4,12 +4,18 @@
 \alias{verify_setup}
 \title{Verify llmClassificR setup}
 \usage{
-verify_setup(test_apis = FALSE)
+verify_setup(test_apis = FALSE, groq_model = "openai/gpt-oss-20b")
 }
 \arguments{
 \item{test_apis}{Logical. If \code{TRUE}, sends a small test request to
 Groq, Voyage AI, Jina AI and TypeSafe (Jev) to verify that the keys work.
 Services without a key are reported as FAILED. Default is \code{FALSE}.}
+
+\item{groq_model}{Groq model used for the test request. The default,
+\code{"openai/gpt-oss-20b"}, is available on Groq's free tier (October
+2026). It is a reasoning model, so the test allows about 2,000 completion
+tokens: a reasoning model spends tokens on its reasoning before the
+answer, and a budget of only a few tokens ends with an empty answer.}
 }
 \value{
 A list with version information, returned invisibly.
@@ -31,5 +37,5 @@ verify_setup(test_apis = TRUE)
 
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

@@ -2,6 +2,7 @@
 
 S3method(predict,platt_fit)
 S3method(predict,shared_head)
+S3method(print,llm_text)
 S3method(print,platt_fit)
 S3method(print,shared_head)
 export(activate_llm_env)

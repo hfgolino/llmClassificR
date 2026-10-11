@@ -7,7 +7,7 @@
 classify_ensemble(
   texts,
   classes,
-  models = c("llama-3.3-70b-versatile", "llama-3.1-8b-instant", "openai/gpt-oss-20b"),
+  models = c("openai/gpt-oss-20b", "openai/gpt-oss-120b", "qwen/qwen3.8-27b"),
   chunk_size = 40,
   shuffle = TRUE,
   seed = 2026
@@ -18,9 +18,14 @@ classify_ensemble(
 
 \item{classes}{Character vector of possible category labels.}
 
-\item{models}{Character vector of Groq model names. Default uses three
-production models: \code{llama-3.3-70b-versatile},
-\code{llama-3.1-8b-instant} and \code{openai/gpt-oss-20b}.}
+\item{models}{Character vector of Groq model names. The default uses three
+models available on Groq's free tier, from two model families:
+\code{openai/gpt-oss-20b}, \code{openai/gpt-oss-120b} (OpenAI
+open-weight reasoning models) and \code{qwen/qwen3.8-27b} (Alibaba Qwen,
+a preview model, October 2026). Groq retired \code{llama-3.1-8b-instant}
+and \code{llama-3.3-70b-versatile} for free and developer-tier keys on
+August 16, 2026; check \code{\link{list_models}} for the models your key
+can use today.}
 
 \item{chunk_size}{Number of texts per API call. Default \code{40};
 \code{NULL} sends all texts in one call.}

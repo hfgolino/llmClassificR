@@ -12,7 +12,8 @@ test_that("classify_direct: shuffled chunks, original order, validated labels", 
   expect_length(mock_log$calls, 3)                        # 20 texts / 8 per chunk
   call <- mock_log$calls[[1]]
   expect_false(is.null(call$max_completion_tokens))       # not max_tokens
-  expect_null(call$reasoning_effort)
+  expect_equal(call$model, "openai/gpt-oss-120b")         # free-tier default (0.2.3)
+  expect_equal(call$reasoning_effort, "low")              # default is a reasoning model
   # shuffled: the first chunk is not simply texts 1 to 8
   first_ids <- as.integer(sub("^Text ([0-9]+) .*", "\\1",
                               regmatches(call$prompt, gregexpr("Text [0-9]+ ", call$prompt))[[1]]))
@@ -43,6 +44,10 @@ test_that("reasoning models get reasoning_effort and extra tokens", {
   res <- classify_direct(d$text, test_classes, model = "openai/gpt-oss-20b")
   expect_equal(mock_log$calls[[1]]$reasoning_effort, "low")
   expect_gt(mock_log$calls[[1]]$max_completion_tokens, 2000)
+  # A model that is not a reasoning model gets neither
+  res <- classify_direct(d$text, test_classes, model = "some-chat-model")
+  expect_null(mock_log$calls[[2]]$reasoning_effort)
+  expect_lt(mock_log$calls[[2]]$max_completion_tokens, 2000)
 })
 
 test_that("few-shot, CoT, JSON and judge return tidy data frames", {
@@ -110,7 +115,7 @@ test_that("ensemble and self-consistency combine runs", {
 
 test_that("llm_generate and generate_labeled_texts", {
   local_mock_groq()
-  expect_equal(llm_generate("Hello"), "Some generated prose.")
+  expect_equal(as.character(llm_generate("Hello")), "Some generated prose.")
   out <- capture.output(syn <- generate_labeled_texts(c(A = "about A", B = "about B"),
                                                       n_per_topic = 1, n_batches = 2))
   expect_equal(nrow(syn), 4)
@@ -166,5 +171,5 @@ test_that("<think> blocks are removed from answers", {
     list(choices = list(list(message = list(content = "<think>\nhmm\n</think>\nHello"))))
   })))
   withr::defer(pkg$groq_client <- old)
-  expect_equal(llm_generate("Hi"), "Hello")
+  expect_equal(as.character(llm_generate("Hi")), "Hello")
 })

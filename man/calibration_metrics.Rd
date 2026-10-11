@@ -61,5 +61,5 @@ calibration_metrics(softmax(S, 0.05), extraversion$subtopic, "T = 0.05")
 \code{\link{reliability_table}}, \code{\link{fit_temperature}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

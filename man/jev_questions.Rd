@@ -82,5 +82,5 @@ names(questions)
 \code{\link{jev_multilabel}}, \code{\link{jev_rate}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

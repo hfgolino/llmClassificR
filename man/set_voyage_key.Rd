@@ -24,5 +24,5 @@ set_voyage_key()   # reads VOYAGE_API_KEY from ~/.Renviron
 
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

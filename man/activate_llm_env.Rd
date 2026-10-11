@@ -54,5 +54,5 @@ activate_llm_env(preload_torch = FALSE)
 
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

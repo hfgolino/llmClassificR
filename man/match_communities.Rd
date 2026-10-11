@@ -49,5 +49,5 @@ problem. \emph{Naval Research Logistics Quarterly, 2}(1-2), 83-97.
 \code{\link{plot_prime_weight}}, \code{\link{compute_nmi}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

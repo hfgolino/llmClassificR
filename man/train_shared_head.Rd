@@ -86,5 +86,5 @@ rbind(
 \code{\link{classify_by_description}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

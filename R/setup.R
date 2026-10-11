@@ -31,7 +31,7 @@
 #'
 #' @return Invisible \code{NULL}. Prints installation progress.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' \dontrun{
@@ -131,7 +131,7 @@ setup_llm_env <- function(env_name = "llm_env", python_version = "3.11",
 #'
 #' @return Invisible \code{NULL}.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' \dontrun{
@@ -195,9 +195,15 @@ activate_llm_env <- function(env_name = "llm_env", preload_torch = TRUE) {
 #'   with no arguments, so keys never appear in scripts you share.
 #' @param max_retries Number of automatic retries (with exponential backoff)
 #'   for rate-limit (429) and server errors. Default is \code{5}.
+#' @param timeout Maximum number of seconds to wait for each Groq request.
+#'   A request that takes longer fails with a timeout error and is retried
+#'   (up to \code{max_retries} times). Default is \code{120}, twice the
+#'   60-second default of the Groq Python SDK, so that reasoning models
+#'   answering large batches have time to finish. A single request can also
+#'   set its own limit, for example \code{llm_generate(prompt, timeout = 30)}.
 #'
 #' @return Invisible \code{NULL}.
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #' @examples
 #' \dontrun{
 #' # Recommended: key stored in ~/.Renviron as GROQ_API_KEY=gsk_...
@@ -208,14 +214,18 @@ activate_llm_env <- function(env_name = "llm_env", preload_torch = TRUE) {
 #' }
 #'
 #' @export
-set_groq_key <- function(key = Sys.getenv("GROQ_API_KEY"), max_retries = 5L) {
+set_groq_key <- function(key = Sys.getenv("GROQ_API_KEY"), max_retries = 5L,
+                         timeout = 120) {
   if (is.null(key) || !nzchar(key)) {
     stop("Please provide a valid Groq API key (or set GROQ_API_KEY in ~/.Renviron).\n",
          "Get one free at https://console.groq.com", call. = FALSE)
   }
+  if (!is.numeric(timeout) || length(timeout) != 1 || is.na(timeout) || timeout <= 0) {
+    stop("'timeout' must be a positive number of seconds.", call. = FALSE)
+  }
 
-  groq <- reticulate::import("groq")
-  .pkg_env$groq_client <- groq$Groq(api_key = key, max_retries = as.integer(max_retries))
+  .pkg_env$groq_client <- .make_groq_client(key, max_retries = max_retries,
+                                            timeout = timeout)
   .pkg_env$groq_key <- key
   cat("Groq API key set successfully.\n")
 
@@ -232,7 +242,7 @@ set_groq_key <- function(key = Sys.getenv("GROQ_API_KEY"), max_retries = 5L) {
 #'   \code{VOYAGE_API_KEY} environment variable (see \code{\link{set_groq_key}}).
 #'
 #' @return Invisible \code{NULL}.
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #' @examples
 #' \dontrun{
 #' set_voyage_key()   # reads VOYAGE_API_KEY from ~/.Renviron
@@ -264,7 +274,7 @@ set_voyage_key <- function(key = Sys.getenv("VOYAGE_API_KEY")) {
 #'   \code{JINA_API_KEY} environment variable (see \code{\link{set_groq_key}}).
 #'
 #' @return Invisible \code{NULL}.
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #' @examples
 #' \dontrun{
 #' set_jina_key()   # reads JINA_API_KEY from ~/.Renviron
@@ -292,9 +302,14 @@ set_jina_key <- function(key = Sys.getenv("JINA_API_KEY")) {
 #' @param test_apis Logical. If \code{TRUE}, sends a small test request to
 #'   Groq, Voyage AI, Jina AI and TypeSafe (Jev) to verify that the keys work.
 #'   Services without a key are reported as FAILED. Default is \code{FALSE}.
+#' @param groq_model Groq model used for the test request. The default,
+#'   \code{"openai/gpt-oss-20b"}, is available on Groq's free tier (October
+#'   2026). It is a reasoning model, so the test allows about 2,000 completion
+#'   tokens: a reasoning model spends tokens on its reasoning before the
+#'   answer, and a budget of only a few tokens ends with an empty answer.
 #'
 #' @return A list with version information, returned invisibly.
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #' @examples
 #' \dontrun{
 #' activate_llm_env()
@@ -307,7 +322,7 @@ set_jina_key <- function(key = Sys.getenv("JINA_API_KEY")) {
 #' }
 #'
 #' @export
-verify_setup <- function(test_apis = FALSE) {
+verify_setup <- function(test_apis = FALSE, groq_model = "openai/gpt-oss-20b") {
 
   cat("Checking Python packages...\n")
   cat("----------------------------------------------------------------------\n")
@@ -334,9 +349,8 @@ verify_setup <- function(test_apis = FALSE) {
 
     # Test Groq
     tryCatch({
-      .groq_chat("Say 'hello' and nothing else.", model = "llama-3.1-8b-instant",
-                 max_tokens = 5L)
-      cat("  Groq API:      OK\n")
+      .test_groq_api(groq_model)
+      cat(sprintf("  Groq API:      OK (%s)\n", groq_model))
     }, error = function(e) {
       cat("  Groq API:      FAILED -", conditionMessage(e), "\n")
     })
@@ -390,11 +404,11 @@ verify_setup <- function(test_apis = FALSE) {
 #'   \item{context_window}{Maximum context length in tokens}
 #'   \item{owned_by}{Model provider/owner}
 #' }
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #' @examples
 #' \dontrun{
-#' # After setting API key, queries live
-#' set_groq_key("your-key")
+#' # After setting the API key (read from ~/.Renviron), queries live
+#' set_groq_key()
 #' list_models()
 #'
 #' # Works without API key (static fallback)
@@ -443,17 +457,20 @@ list_models <- function(type = NULL) {
   }
 
   # Static fallback
-  # Production models on Groq (September 2026); qwen3.8 is a preview model.
-  # Always prefer the live list: models are retired regularly.
+  # Chat models on Groq's free tier (checked against
+  # https://console.groq.com/docs/models and /docs/deprecations, October 2026).
+  # Groq retired llama-3.1-8b-instant and llama-3.3-70b-versatile for free and
+  # developer-tier keys on August 16, 2026, so they are not listed. Preview
+  # models can be removed at short notice; always prefer the live list.
   models <- data.frame(
-    model = c("llama-3.3-70b-versatile", "llama-3.1-8b-instant",
-              "openai/gpt-oss-20b", "openai/gpt-oss-120b", "qwen/qwen3.8-27b"),
-    display_name = c("Llama 3.3 70B", "Llama 3.1 8B",
-                     "GPT-OSS 20B (reasoning)", "GPT-OSS 120B (reasoning)",
+    model = c("openai/gpt-oss-20b", "openai/gpt-oss-120b",
+              "openai/gpt-oss-safeguard-20b", "qwen/qwen3.8-27b"),
+    display_name = c("GPT-OSS 20B (reasoning)", "GPT-OSS 120B (reasoning)",
+                     "GPT-OSS Safeguard 20B (reasoning, safety policies, preview)",
                      "Qwen 3.8 27B (reasoning, preview)"),
-    context_window = c(131072L, 131072L, 131072L, 131072L, NA),
-    owned_by = c("Meta", "Meta", "OpenAI", "OpenAI", "Alibaba Cloud"),
-    type = c("chat", "chat", "chat", "chat", "chat"),
+    context_window = c(131072L, 131072L, 131072L, 131072L),
+    owned_by = c("OpenAI", "OpenAI", "OpenAI", "Alibaba Cloud"),
+    type = c("chat", "chat", "chat", "chat"),
     stringsAsFactors = FALSE
   )
 
@@ -529,6 +546,16 @@ list_models <- function(type = NULL) {
   df
 }
 
+#' Create the Groq client (Python SDK through reticulate)
+#'
+#' A separate function so that tests can replace it with a mock.
+#' @noRd
+.make_groq_client <- function(key, max_retries = 5L, timeout = 120) {
+  groq <- reticulate::import("groq")
+  groq$Groq(api_key = key, max_retries = as.integer(max_retries),
+            timeout = as.numeric(timeout))
+}
+
 #' Get the Groq client, with a helpful error if not set
 #' @noRd
 .get_groq_client <- function() {
@@ -541,6 +568,22 @@ list_models <- function(type = NULL) {
     }
   }
   .pkg_env$groq_client
+}
+
+#' Minimal Groq request used by verify_setup()
+#'
+#' gpt-oss and Qwen 3.8 are reasoning models: they spend completion tokens on
+#' reasoning before the answer. .groq_chat() adds 2000 tokens and sets
+#' reasoning_effort = "low" for these models, so the request below allows
+#' 2064 completion tokens. An empty answer is treated as a failure.
+#' @noRd
+.test_groq_api <- function(model = "openai/gpt-oss-20b") {
+  out <- .groq_chat("Say 'hello' and nothing else.", model = model,
+                    max_tokens = 64L)
+  if (!nzchar(trimws(out))) {
+    stop("The model returned an empty answer (", model, ").", call. = FALSE)
+  }
+  invisible(out)
 }
 
 #' Get the Voyage AI client, with a helpful error if not set

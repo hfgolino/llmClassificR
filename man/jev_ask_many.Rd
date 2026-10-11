@@ -60,5 +60,5 @@ levels <- jev_parse_score(responses, "level")
 \code{\link{jev_parse_choice}}, \code{\link{jev_classify}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

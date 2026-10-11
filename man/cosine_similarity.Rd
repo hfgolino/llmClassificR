@@ -28,5 +28,5 @@ cosine_similarity(a, c)  # -1.0 (opposite)
 
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

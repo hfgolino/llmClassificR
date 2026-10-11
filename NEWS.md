@@ -1,3 +1,63 @@
+# llmClassificR 0.2.3
+
+## Groq model updates
+
+Groq deprecated `llama-3.1-8b-instant` and `llama-3.3-70b-versatile` for free
+and developer-tier keys on August 16, 2026, and recommends `openai/gpt-oss-20b`
+and `openai/gpt-oss-120b` as their replacements
+(https://console.groq.com/docs/deprecations). Model IDs were checked against
+https://console.groq.com/docs/models in October 2026.
+
+* `verify_setup(test_apis = TRUE)` tests Groq with `openai/gpt-oss-20b`
+  instead of `llama-3.1-8b-instant`, so the check no longer fails on free
+  keys. The test request allows 2,064 completion tokens (a reasoning model
+  spends tokens on reasoning before the answer; the old budget of 5 tokens
+  would end with an empty answer), and an empty answer counts as a failure.
+  New argument `groq_model` to test another model.
+* `classify_ensemble()` defaults to three free-tier models from two families:
+  `openai/gpt-oss-20b`, `openai/gpt-oss-120b` and `qwen/qwen3.8-27b`
+  (a preview model).
+* Every other Groq function that defaulted to `llama-3.3-70b-versatile` now
+  defaults to `openai/gpt-oss-120b`: `classify_direct()`,
+  `classify_fewshot()`, `classify_cot()`, `classify_json()`,
+  `classify_self_consistency()`, `classify_scores()`, `classify_judge()`,
+  `llm_generate()`, `rag_generate()`, `discover_topics()` and
+  `classify_with_rag()`. These calls now use a reasoning model, so they get
+  `reasoning_effort = "low"` and 2,000 extra completion tokens, as before for
+  gpt-oss models. Results will differ from those of 0.2.2; pass
+  `model = ` explicitly to reproduce older analyses with a key that still has
+  access to the retired models.
+* The static fallback of `list_models()` no longer lists the deprecated Llama
+  models. It lists `openai/gpt-oss-20b`, `openai/gpt-oss-120b`,
+  `openai/gpt-oss-safeguard-20b` (preview) and `qwen/qwen3.8-27b` (preview).
+
+## Other changes
+
+* `set_groq_key()` gains `timeout` (default 120 seconds per request; the Groq
+  Python SDK default is 60). A request that takes longer fails and is retried
+  up to `max_retries` times. A single call can set its own limit, for example
+  `llm_generate(prompt, timeout = 30)`.
+* `llm_generate()` keeps the token counts reported by Groq in the `"usage"`
+  attribute (`prompt_tokens`, `completion_tokens`) instead of dropping them.
+  The result now has class `llm_text`, whose print method shows the text
+  only; `cat()`, `paste()` and other string functions work as before, and
+  `as.character()` returns a plain string.
+* `rag_generate()` returns the token counts in a new `usage` element.
+* `embed_jina()` and `list_jina_models()` document the Jina v5 text models,
+  `jina-embeddings-v5-text-small` (1024 dimensions, 32,768 tokens) and
+  `jina-embeddings-v5-text-nano` (768 dimensions, 8,192 tokens). The default
+  stays `jina-embeddings-v3`.
+* `classify_judge()`: the default of `persona` is now `NULL`, which uses the
+  same personality-psychologist persona as before (the long default string
+  made the usage line too wide for the manual). Results are unchanged.
+* The author line of the help pages uses `\email{}`, so the HTML manual
+  validates (the address was read as an unknown HTML tag).
+* README: notes for 0.2.3, citation updated to 0.2.3, and grDevices, callr
+  and clue added to the list of required packages.
+* The examples of `list_models()` and `embed_jina()` call `set_groq_key()` and
+  `set_jina_key()` with no argument, so keys are read from `~/.Renviron`
+  instead of being typed in scripts.
+
 # llmClassificR 0.2.2
 
 * `prime_weight_encode()` gains `remove_floor` and returns the floor-free

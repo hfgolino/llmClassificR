@@ -47,6 +47,13 @@ Bag-of-Words to Jev*:
 
 See [NEWS.md](NEWS.md) for all changes, including behavior changes.
 
+> **0.2.3:** Groq deprecated `llama-3.1-8b-instant` and `llama-3.3-70b-versatile`
+> for free and developer-tier keys on August 16, 2026. Every Groq function now
+> defaults to models on the free tier: `openai/gpt-oss-120b` for single-model
+> functions, and `openai/gpt-oss-20b`, `openai/gpt-oss-120b` and
+> `qwen/qwen3.8-27b` for `classify_ensemble()`. Run `list_models()` to see the
+> models your key can use today.
+
 > **0.2.1:** `embed_local()` runs in a separate background R process by default,
 > so a PyTorch crash can no longer abort your RStudio session. Start every
 > session with `library(llmClassificR)` and `activate_llm_env()`, before other
@@ -90,7 +97,7 @@ data(extraversion)
 
 # Classify!
 results <- classify_direct(extraversion$text, unique(extraversion$subtopic))
-evaluate_classification(extraversion$subtopic, results$prediction, "Llama 3.3 70B")
+evaluate_classification(extraversion$subtopic, results$prediction, "GPT-OSS 120B")
 ```
 
 ## Features
@@ -157,7 +164,7 @@ as errors) and results come back in the original order.
 | Function | Description |
 |----------|-------------|
 | `embed_voyage()` | Voyage AI API embeddings (voyage-4; 256 to 2048 dimensions) |
-| `embed_jina()` | Jina AI API embeddings (pure R via httr2, no Python needed) |
+| `embed_jina()` | Jina AI API embeddings: v3 (default), v4 and v5 text models (pure R via httr2, no Python needed) |
 | `embed_local()` | Local HuggingFace models, all hidden layers (BERT, RoBERTa, ModernBERT, ...) |
 | `evaluate_layers()` | Layer quality evaluation (silhouette, PCA, separation) |
 
@@ -327,9 +334,12 @@ compute_nmi(extraversion$subtopic, result$communities)   # unsupervised
 linear_probe(embeddings, extraversion$subtopic)         # supervised head
 
 # Jina AI embeddings (pure R: no Python needed!)
-jina_emb <- embed_jina(extraversion$text)
+jina_emb <- embed_jina(extraversion$text)                  # jina-embeddings-v3
 result2 <- ega_classify(jina_emb)
 compute_nmi(extraversion$subtopic, result2$communities)
+
+# Newer Jina v5 text models: v5-text-small (1024-dim) or v5-text-nano (768-dim)
+jina_v5 <- embed_jina(extraversion$text, model = "jina-embeddings-v5-text-nano")
 
 # Layer by layer: EGA vs. a linear head (BERT or ModernBERT)
 emb <- embed_local(extraversion$text, model_name = "bert-base-uncased")
@@ -354,7 +364,7 @@ session with `activate_llm_env("modernbert_env")`.
 
 ## Dependencies
 
-**R packages** (required): reticulate, jsonlite, httr2 (>= 1.1.1), stats, cluster, utils, graphics
+**R packages** (required): reticulate, jsonlite, httr2 (>= 1.1.1), stats, cluster, utils, graphics, grDevices, callr, clue
 
 **R packages** (suggested): EGAnet, glmnet, Matrix, tm, SnowballC, ggplot2, aricode, ggpubr, tidyr, dplyr, corrplot
 
@@ -370,7 +380,7 @@ If you use llmClassificR in your research, please cite:
 
 ```
 Golino, H. (2026). llmClassificR: Text Classification with Large Language Models in R.
-R package version 0.2.1. https://github.com/hfgolino/llmClassificR
+R package version 0.2.3. https://github.com/hfgolino/llmClassificR
 ```
 
 ## License

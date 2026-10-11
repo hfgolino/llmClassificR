@@ -64,7 +64,7 @@ normalize_labels <- function(pred, classes) {
 #'   chunk fails (e.g., a wrong API key or model name), an error is raised
 #'   with the first error message.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' # A toy "classifier": label each text by its first word
@@ -182,7 +182,7 @@ run_in_chunks <- function(texts, classify_fun, chunk_size = 40, shuffle = TRUE,
 #' (they think before answering), and the client's built-in retries.
 #' Returns the text content, with token usage as an attribute.
 #' @noRd
-.groq_chat <- function(prompt, model = "llama-3.3-70b-versatile", system = NULL,
+.groq_chat <- function(prompt, model = "openai/gpt-oss-120b", system = NULL,
                        temperature = 0, max_tokens = 4000L, response_format = NULL,
                        extra = list()) {
   client <- .get_groq_client()

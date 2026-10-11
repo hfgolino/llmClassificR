@@ -60,5 +60,5 @@ setup_llm_env(env_name = "modernbert_env", modernbert = TRUE)
 
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

@@ -79,5 +79,5 @@ res <- classify_by_description(extraversion$text, label_descriptions$extraversio
 \code{\link{fit_temperature}}
 }
 \author{
-Hudson Golino \if{html}{\out{<hfg9s at virginia.edu>}}
+Hudson Golino \email{hfg9s@virginia.edu}
 }

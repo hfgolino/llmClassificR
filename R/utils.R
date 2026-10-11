@@ -7,7 +7,7 @@
 #' @param b Numeric vector of the same length.
 #'
 #' @return A single numeric value (the cosine similarity).
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #' @examples
 #' a <- c(1, 2, 3)
 #' b <- c(1, 2, 3)
@@ -29,7 +29,7 @@ cosine_similarity <- function(a, b) {
 #' @param x A numeric matrix (rows = observations, cols = dimensions).
 #'
 #' @return A symmetric numeric matrix of cosine similarities.
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #' @examples
 #' \dontrun{
 #' embeddings <- embed_voyage(texts)
@@ -81,7 +81,7 @@ cosine_similarity_matrix <- function(x) {
 #' (no aricode needed). Missing predictions are treated as one "(invalid)"
 #' category for class predictions, so they count as errors.
 #'
-#' @author Hudson Golino <hfg9s at virginia.edu>
+#' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
 #' truth <- rep(c("Friendly", "Positive", "Assertive"), each = 4)

@@ -7,7 +7,7 @@
 llm_generate(
   prompt,
   system_prompt = NULL,
-  model = "llama-3.3-70b-versatile",
+  model = "openai/gpt-oss-120b",
   temperature = 0.3,
   max_tokens = 500L,
   ...
@@ -18,7 +18,7 @@ llm_generate(
 
 \item{system_prompt}{Optional system prompt to set a persona or context.}
 
-\item{model}{Groq model to use. Default is \code{"llama-3.3-70b-versatile"}.}
+\item{model}{Groq model to use. Default is \code{"openai/gpt-oss-120b"}.}
 
 \item{temperature}{Creativity parameter (0 = deterministic, 1 = creative).
 Default is \code{0.3}.}
@@ -34,7 +34,13 @@ with \code{tool_choice = "required"}. They override the package defaults
 (e.g., \code{reasoning_effort = "medium"}).}
 }
 \value{
-A character string containing the model's response.
+A character string of class \code{llm_text} with the model's
+response. Its \code{"usage"} attribute holds the token counts reported by
+Groq (\code{prompt_tokens} and \code{completion_tokens}), which is useful
+to track costs and rate limits. The class only changes how the text is
+printed: \code{cat()}, \code{paste()} and other string functions work as
+usual, and \code{as.character()} returns a plain string without the
+attribute.
 }
 \description{
 Sends a prompt to a Groq LLM and returns the generated text. Useful for
@@ -44,6 +50,10 @@ text generation tasks like item creation, summarization, and exploration.
 \dontrun{
 # Simple generation
 llm_generate("Generate 3 survey items measuring academic self-efficacy.")
+
+# Tokens used by the request
+items <- llm_generate("Generate 3 survey items measuring grit.")
+attr(items, "usage")
 
 # With system prompt
 llm_generate(
