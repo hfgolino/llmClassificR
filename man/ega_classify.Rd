@@ -8,9 +8,9 @@ ega_classify(
   embeddings,
   model = "tmfg",
   corr = "pearson",
-  uni_method = "expand",
   optimize_steps = FALSE,
   steps_range = 2:25,
+  uni_method = "expand",
   plot = TRUE
 )
 }
@@ -22,9 +22,6 @@ as returned by \code{\link{embed_voyage}} or \code{\link{embed_local}}.}
 
 \item{corr}{Correlation method: \code{"pearson"} (default), \code{"spearman"}.}
 
-\item{uni_method}{Method for unidimensionality: \code{"expand"} (default) or
-\code{"LE"}.}
-
 \item{optimize_steps}{Logical. If \code{TRUE} (default is \code{FALSE}), uses
 \code{EGA.fit} to search for the optimal number of walktrap steps (2-25),
 which can improve community detection but takes longer. \code{EGA.fit}
@@ -33,6 +30,9 @@ true labels are never used.}
 
 \item{steps_range}{Integer vector of walktrap steps to try when
 \code{optimize_steps = TRUE}. Default is \code{2:25}.}
+
+\item{uni_method}{Method for unidimensionality: \code{"expand"} (default) or
+\code{"LE"}.}
 
 \item{plot}{Logical. Whether to plot the EGA network. Default is \code{TRUE}.}
 }

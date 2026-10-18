@@ -56,9 +56,9 @@
 ega_classify <- function(embeddings,
                          model = "tmfg",
                          corr = "pearson",
-                         uni_method = "expand",
                          optimize_steps = FALSE,
                          steps_range = 2:25,
+                         uni_method = "expand",
                          plot = TRUE) {
 
   if (!requireNamespace("EGAnet", quietly = TRUE)) {
@@ -77,8 +77,9 @@ ega_classify <- function(embeddings,
       transposed_df,
       model = model,
       corr = corr,
-      uni.method = uni_method,
-      steps = steps_range
+      steps = steps_range,
+      plot.EGA = plot,
+      uni.method = uni_method
     )
     ega_obj <- ega_result$EGA
   } else {
@@ -86,8 +87,8 @@ ega_classify <- function(embeddings,
       transposed_df,
       model = model,
       corr = corr,
-      uni.method = uni_method,
-      plot.EGA = plot
+      plot.EGA = plot,
+      uni.method = uni_method
     )
   }
 
