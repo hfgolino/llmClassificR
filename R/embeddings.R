@@ -204,7 +204,7 @@ embed_jina <- function(texts,
 #' List Jina AI embedding models
 #'
 #' Returns a data.frame of available Jina AI embedding models with their
-#' specifications (static list, checked against \url{https://jina.ai/embeddings}
+#' specifications (static list, checked against \url{https://jina.ai/embeddings/}
 #' in October 2026). No API key needed. Jina also offers multimodal v5 models
 #' (\code{jina-embeddings-v5-omni-small} and \code{jina-embeddings-v5-omni-nano})
 #' that are not listed because \code{\link{embed_jina}} sends text only.

@@ -9,3 +9,4 @@ llm_env/
 src/*.o
 src/*.so
 .DS_Store
+.positai

@@ -1,2 +1,11 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.positai$
+^\.claude$
+^data-raw$
+^logo_llmClassificR\.png$
+^cran-comments\.md$
+^\.Rhistory$
+^CRAN-SUBMISSION$
+^\.github$
+^revdep$
