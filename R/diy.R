@@ -55,7 +55,7 @@ embed_sentences <- function(texts,
   enc <- .pkg_env$encoders[[model_name]]
   if (is.null(enc)) {
     transformers <- reticulate::import("transformers")
-    cat("Loading model:", model_name, "...\n")
+    .say("Loading model:", model_name, "...\n")
     enc <- list(
       torch = reticulate::import("torch"),
       tokenizer = transformers$AutoTokenizer$from_pretrained(model_name),
@@ -171,7 +171,8 @@ cosine_scores <- function(text_embeddings, label_embeddings) {
 #' activate_llm_env()
 #' res <- classify_by_description(extraversion$text, label_descriptions$extraversion)
 #'
-#' # Try it: rewrite one description and see how accuracy changes
+#' # The descriptions are the measurement instrument: rewriting one of them
+#' # can change the accuracy
 #' }
 #'
 #' @seealso \code{\link{jev_classify}}, \code{\link{train_shared_head}},

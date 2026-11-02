@@ -7,11 +7,15 @@
 setup_llm_env(
   env_name = "llm_env",
   python_version = "3.11",
-  modernbert = FALSE
+  modernbert = FALSE,
+  ask = TRUE
 )
 }
 \arguments{
-\item{env_name}{Name of the virtual environment. Default is \code{"llm_env"}.}
+\item{env_name}{Name of the virtual environment, or a path to the folder
+where it should be created (for example \code{"./llm_env"}). Default is
+\code{"llm_env"}, created in the user data directory of the package (see
+Details).}
 
 \item{python_version}{Python version to install. Default is \code{"3.11"}.}
 
@@ -22,9 +26,14 @@ for a separate, optional environment, e.g.
 \code{setup_llm_env("modernbert_env", modernbert = TRUE)}, and activate it
 with \code{activate_llm_env("modernbert_env")} in a fresh R session.
 Default \code{FALSE}.}
+
+\item{ask}{Logical. Ask for confirmation before writing the environment to
+disk (default \code{TRUE}). In a non-interactive session, set
+\code{ask = FALSE} to confirm explicitly.}
 }
 \value{
-Invisible \code{NULL}. Prints installation progress.
+Invisibly, the path of the environment folder (or \code{NULL} if
+nothing was installed). Progress is shown as messages.
 }
 \description{
 Creates a Python virtual environment using UV and installs all required
@@ -32,6 +41,15 @@ packages with pinned versions for cross-platform compatibility (Intel Mac,
 Apple Silicon, Windows, Linux). Only needs to be run once.
 }
 \details{
+\strong{Where the environment is created.} When \code{env_name} is a name,
+the environment is created in the user data directory of the package,
+\code{tools::R_user_dir("llmClassificR", which = "data")}; when it is a
+path, it is created there. The environment takes several hundred megabytes
+(mostly PyTorch) and can be removed at any time by deleting its folder.
+\code{\link{activate_llm_env}} looks for an environment first in the
+working directory, where versions up to 0.2.3 created it, and then in the
+user data directory.
+
 This function:
 \enumerate{
 \item Creates a virtual environment using \code{uv venv}
@@ -51,8 +69,11 @@ installation instructions.
 # First time setup (run once)
 setup_llm_env()
 
-# Custom environment name
+# Custom environment name (in the user data directory)
 setup_llm_env(env_name = "my_env")
+
+# Environment in a folder of your choice
+setup_llm_env(env_name = "~/envs/llm_env")
 
 # Optional second environment for ModernBERT
 setup_llm_env(env_name = "modernbert_env", modernbert = TRUE)

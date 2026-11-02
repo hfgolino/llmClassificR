@@ -31,6 +31,11 @@ cosine_similarity <- function(a, b) {
 #' @return A symmetric numeric matrix of cosine similarities.
 #' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #' @examples
+#' # Offline, with the pre-computed MiniLM embeddings shipped with the package
+#' data(minilm_embeddings)
+#' E <- minilm_embeddings$texts$extraversion[1:5, ]
+#' round(cosine_similarity_matrix(E), 2)
+#'
 #' \dontrun{
 #' embeddings <- embed_voyage(texts)
 #' sim_mat <- cosine_similarity_matrix(embeddings)
@@ -146,13 +151,31 @@ compare_methods <- function(true_labels, ...) {
   results <- results[order(-results$NMI), ]
   rownames(results) <- NULL
 
-  cat("\n==========================================\n")
-  cat("  CLASSIFICATION METHOD COMPARISON\n")
-  cat("==========================================\n")
-  print(results, row.names = FALSE)
-  cat("==========================================\n")
+  .say("\n==========================================\n")
+  .say("  CLASSIFICATION METHOD COMPARISON\n")
+  .say("==========================================\n")
+  .say_print(results, row.names = FALSE)
+  .say("==========================================\n")
 
   invisible(results)
+}
+
+
+# Informational console output. .say() takes the same arguments as cat() and
+# prints the same text, but through message(), so that it goes to stderr and
+# can be silenced with suppressMessages() (CRAN policy). .say_print() does the
+# same for an object that would otherwise be printed with print().
+.say <- function(..., sep = " ") {
+  parts <- lapply(list(...), function(a) {
+    if (is.numeric(a)) vapply(a, function(v) format(v), character(1)) else as.character(a)
+  })
+  message(paste(unlist(parts), collapse = sep), appendLF = FALSE)
+  invisible(NULL)
+}
+
+.say_print <- function(x, ...) {
+  message(paste(utils::capture.output(print(x, ...)), collapse = "\n"))
+  invisible(x)
 }
 
 

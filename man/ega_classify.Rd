@@ -52,6 +52,17 @@ embedding dimensions as observations (transposed), so that correlated
 texts end up in the same community.
 }
 \examples{
+# Offline, with the pre-computed MiniLM embeddings shipped with the package
+\donttest{
+if (requireNamespace("EGAnet", quietly = TRUE)) {
+  data(minilm_embeddings)
+  data(extraversion)
+  res <- ega_classify(minilm_embeddings$texts$extraversion, plot = FALSE)
+  table(res$communities, useNA = "ifany")
+  compute_nmi(extraversion$subtopic, res$communities)
+}
+}
+
 \dontrun{
 data(extraversion)
 embeddings <- embed_voyage(extraversion$text)

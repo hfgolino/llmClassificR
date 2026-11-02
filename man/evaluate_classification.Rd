@@ -22,7 +22,7 @@ A one-row data.frame with columns \code{method}, \code{accuracy},
 \code{rbind()} to combine several methods.
 }
 \description{
-Computes the metrics used throughout the course for any vector of
+Computes the metrics used throughout the package for any vector of
 predictions (LLM, Jev, embeddings, bag-of-words):
 \itemize{
 \item \strong{accuracy}: proportion of correct predictions;

@@ -29,6 +29,17 @@ using three R-native metrics: silhouette score (via k-means clustering),
 PCA explained variance, and within-class vs. between-class distance ratio.
 }
 \examples{
+# Offline, with the pre-computed MiniLM embeddings shipped with the package;
+# three blocks of embedding dimensions stand in for the layers of an encoder
+\donttest{
+data(minilm_embeddings)
+data(extraversion)
+E <- minilm_embeddings$texts$extraversion
+blocks <- list(block_1 = E[, 1:128], block_2 = E[, 129:256],
+               block_3 = E[, 257:384])
+evaluate_layers(blocks, extraversion$subtopic)
+}
+
 \dontrun{
 data(extraversion)
 emb <- embed_local(extraversion$text, model_name = "bert-base-uncased")

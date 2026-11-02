@@ -33,8 +33,9 @@ A list with \code{evaluation} (from
 \description{
 TF-IDF features + cross-validated elastic-net logistic regression, the
 baseline every LLM classifier should be compared with. It is fast, free,
-private (runs locally) and interpretable. On the course extraversion data
-it reaches about 97\\% accuracy, which is a high bar for zero-shot LLMs.
+private (runs locally) and interpretable. On the \code{\link{extraversion}}
+data shipped with the package it reaches about 97\\% accuracy, which is a
+high bar for zero-shot LLMs.
 }
 \examples{
 data(extraversion)

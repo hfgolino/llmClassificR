@@ -38,7 +38,7 @@ test_that("the static list_models() fallback has no deprecated models", {
   old <- pkg$groq_client
   pkg$groq_client <- NULL
   withr::defer(pkg$groq_client <- old)
-  out <- capture.output(m <- list_models())
+  out <- capture.output(m <- list_models(), type = "message")
   expect_false(any(m$model %in% deprecated_groq))
   expect_false(any(grepl("llama", m$model, ignore.case = TRUE)))
   expect_setequal(m$model, c("openai/gpt-oss-20b", "openai/gpt-oss-120b",
@@ -78,11 +78,11 @@ test_that("verify_setup(test_apis = TRUE) reports the Groq model it tested", {
   # No Python needed: every import fails and is reported as NOT FOUND
   local_mocked_bindings(import = function(module, ...) stop("no Python in tests"),
                         .package = "reticulate")
-  out <- capture.output(verify_setup(test_apis = TRUE))
+  out <- capture.output(verify_setup(test_apis = TRUE), type = "message")
   expect_true(any(grepl("Groq API: +OK \\(openai/gpt-oss-20b\\)", out)))
   expect_equal(mock_log$calls[[1]]$model, "openai/gpt-oss-20b")
 
-  out <- capture.output(verify_setup(test_apis = TRUE, groq_model = "openai/gpt-oss-120b"))
+  out <- capture.output(verify_setup(test_apis = TRUE, groq_model = "openai/gpt-oss-120b"), type = "message")
   expect_true(any(grepl("OK \\(openai/gpt-oss-120b\\)", out)))
 })
 

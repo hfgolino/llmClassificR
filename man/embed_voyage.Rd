@@ -43,8 +43,8 @@ space.
 \details{
 Embeddings of documents and queries must come from the same model family
 (e.g., do not compare voyage-3.5 documents with voyage-4 queries).
-Voyage AI offers a free token allowance for new accounts, more than enough
-for the course activities.
+Voyage AI offers a free token allowance for new accounts, enough to try the
+functions on the data sets shipped with the package.
 }
 \examples{
 \dontrun{

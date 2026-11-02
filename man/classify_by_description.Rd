@@ -70,7 +70,8 @@ rbind(calibration_metrics(softmax(S, 1), neuroticism$subtopic, "T = 1"),
 activate_llm_env()
 res <- classify_by_description(extraversion$text, label_descriptions$extraversion)
 
-# Try it: rewrite one description and see how accuracy changes
+# The descriptions are the measurement instrument: rewriting one of them
+# can change the accuracy
 }
 
 }

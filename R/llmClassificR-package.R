@@ -1,9 +1,9 @@
 #' @keywords internal
 "_PACKAGE"
-#' @title llmClassificR: Text Classification with Large Language Models in R
+#' @title llmClassificR: Text Classification with Large Language Models
 #'
-#' @description A user-friendly toolkit for text classification with Large
-#' Language Models in R. It covers the whole path from bag-of-words to Jev:
+#' @description A toolkit for text classification with large language models
+#' (LLMs). It covers the whole path from bag-of-words baselines to Jev:
 #' robust batch zero-shot classification with Groq LLMs (direct, few-shot,
 #' chain-of-thought, JSON, strict JSON Schema, ensembles, self-consistency,
 #' scoring and LLM-as-judge), Jev "System One" classification (TypeSafe AI)

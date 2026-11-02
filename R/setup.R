@@ -4,7 +4,10 @@
 #' packages with pinned versions for cross-platform compatibility (Intel Mac,
 #' Apple Silicon, Windows, Linux). Only needs to be run once.
 #'
-#' @param env_name Name of the virtual environment. Default is \code{"llm_env"}.
+#' @param env_name Name of the virtual environment, or a path to the folder
+#'   where it should be created (for example \code{"./llm_env"}). Default is
+#'   \code{"llm_env"}, created in the user data directory of the package (see
+#'   Details).
 #' @param python_version Python version to install. Default is \code{"3.11"}.
 #' @param modernbert Logical. If \code{TRUE}, installs transformers 4.48.3,
 #'   the first version that supports ModernBERT
@@ -13,8 +16,20 @@
 #'   \code{setup_llm_env("modernbert_env", modernbert = TRUE)}, and activate it
 #'   with \code{activate_llm_env("modernbert_env")} in a fresh R session.
 #'   Default \code{FALSE}.
+#' @param ask Logical. Ask for confirmation before writing the environment to
+#'   disk (default \code{TRUE}). In a non-interactive session, set
+#'   \code{ask = FALSE} to confirm explicitly.
 #'
 #' @details
+#' \strong{Where the environment is created.} When \code{env_name} is a name,
+#' the environment is created in the user data directory of the package,
+#' \code{tools::R_user_dir("llmClassificR", which = "data")}; when it is a
+#' path, it is created there. The environment takes several hundred megabytes
+#' (mostly PyTorch) and can be removed at any time by deleting its folder.
+#' \code{\link{activate_llm_env}} looks for an environment first in the
+#' working directory, where versions up to 0.2.3 created it, and then in the
+#' user data directory.
+#'
 #' This function:
 #' \enumerate{
 #'   \item Creates a virtual environment using \code{uv venv}
@@ -29,7 +44,8 @@
 #' UV must be installed first. See \url{https://docs.astral.sh/uv/} for
 #' installation instructions.
 #'
-#' @return Invisible \code{NULL}. Prints installation progress.
+#' @return Invisibly, the path of the environment folder (or \code{NULL} if
+#'   nothing was installed). Progress is shown as messages.
 #'
 #' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
@@ -38,8 +54,11 @@
 #' # First time setup (run once)
 #' setup_llm_env()
 #'
-#' # Custom environment name
+#' # Custom environment name (in the user data directory)
 #' setup_llm_env(env_name = "my_env")
+#'
+#' # Environment in a folder of your choice
+#' setup_llm_env(env_name = "~/envs/llm_env")
 #'
 #' # Optional second environment for ModernBERT
 #' setup_llm_env(env_name = "modernbert_env", modernbert = TRUE)
@@ -47,7 +66,7 @@
 #'
 #' @export
 setup_llm_env <- function(env_name = "llm_env", python_version = "3.11",
-                          modernbert = FALSE) {
+                          modernbert = FALSE, ask = TRUE) {
 
   # Check UV is available
   uv_check <- system("uv --version", intern = TRUE, ignore.stderr = TRUE)
@@ -65,14 +84,31 @@ setup_llm_env <- function(env_name = "llm_env", python_version = "3.11",
   # Quote arguments for the shell of this platform (spaces in paths; Windows)
   q <- function(x) shQuote(x, type = if (.Platform$OS.type == "windows") "cmd" else "sh")
 
-  cat("Creating Python", python_version, "environment:", env_name, "\n")
-  system(paste("uv venv --python", python_version, q(env_name)))
+  # Where to write the environment (never silently in the working directory)
+  env_dir <- .env_dir(env_name, for_setup = TRUE)
+  if (ask) {
+    if (!interactive()) {
+      stop("setup_llm_env() writes a Python environment of several hundred MB to\n  ",
+           env_dir, "\nRun it in an interactive session, or set ask = FALSE to confirm.",
+           call. = FALSE)
+    }
+    ok <- utils::askYesNo(paste0("Create the Python environment (several hundred MB) in\n  ",
+                                 env_dir, "\n?"))
+    if (!isTRUE(ok)) {
+      message("Nothing was installed.")
+      return(invisible(NULL))
+    }
+  }
+  dir.create(dirname(env_dir), recursive = TRUE, showWarnings = FALSE)
+
+  .say("Creating Python", python_version, "environment:", env_dir, "\n")
+  system(paste("uv venv --python", python_version, q(env_dir)))
 
   # Detect python path (use full path, quoted for spaces)
-  py <- .get_python_path(env_name)
+  py <- .get_python_path(env_dir)
 
   transformers_pin <- if (modernbert) "transformers==4.48.3" else "transformers>=4.38,<4.45"
-  cat("Installing packages (this takes 1-2 minutes)...\n")
+  .say("Installing packages (this takes 1-2 minutes)...\n")
   install_cmd <- paste(
     "uv pip install --python", q(py),
     "groq voyageai",
@@ -85,15 +121,15 @@ setup_llm_env <- function(env_name = "llm_env", python_version = "3.11",
   result <- system(install_cmd)
 
   if (result == 0) {
-    cat("\nSetup complete! Now run:\n")
-    cat("  activate_llm_env(\"", env_name, "\")\n", sep = "")
-    cat("  set_groq_key()     # reads GROQ_API_KEY from ~/.Renviron\n")
-    cat("  set_voyage_key()   # reads VOYAGE_API_KEY from ~/.Renviron\n")
+    .say("\nSetup complete! Now run:\n")
+    .say("  activate_llm_env(\"", env_name, "\")\n", sep = "")
+    .say("  set_groq_key()     # reads GROQ_API_KEY from ~/.Renviron\n")
+    .say("  set_voyage_key()   # reads VOYAGE_API_KEY from ~/.Renviron\n")
   } else {
     warning("Installation may have encountered errors. Check the output above.")
   }
 
-  invisible(NULL)
+  invisible(env_dir)
 }
 
 
@@ -103,7 +139,10 @@ setup_llm_env <- function(env_name = "llm_env", python_version = "3.11",
 #' Must be called at the start of each R session before using any llmClassificR
 #' functions that require Python.
 #'
-#' @param env_name Name of the virtual environment. Default is \code{"llm_env"}.
+#' @param env_name Name of the virtual environment, or the path to its folder.
+#'   Default is \code{"llm_env"}. A name is looked up first in the working
+#'   directory and then in the user data directory of the package (see
+#'   \code{\link{setup_llm_env}}).
 #' @param preload_torch Logical. Load PyTorch right away (default \code{TRUE}).
 #'   See Details.
 #'
@@ -151,8 +190,9 @@ activate_llm_env <- function(env_name = "llm_env", preload_torch = TRUE) {
   if (!file.exists(py)) {
     stop(
       "Python environment '", env_name, "' not found at: ", py, "\n",
-      "Make sure you are in the correct working directory (getwd()),\n",
-      "and that you have run setup_llm_env() first.",
+      "Run setup_llm_env() first, or give the path to an existing environment\n",
+      "(environments are looked up in the working directory and in\n",
+      tools::R_user_dir("llmClassificR", which = "data"), ").",
       call. = FALSE
     )
   }
@@ -165,13 +205,13 @@ activate_llm_env <- function(env_name = "llm_env", preload_torch = TRUE) {
 
   reticulate::use_python(py, required = TRUE)
   .pkg_env$python <- py      # used by embed_local(isolate = TRUE)
-  cat("Activated environment:", env_name, "\n")
-  cat("Python:", py, "\n")
+  .say("Activated environment:", env_name, "\n")
+  .say("Python:", py, "\n")
 
   if (preload_torch) {
     if (reticulate::py_module_available("torch")) {
       torch <- reticulate::import("torch")
-      cat("PyTorch", torch$`__version__`, "loaded\n")
+      .say("PyTorch", torch$`__version__`, "loaded\n")
     } else {
       message("PyTorch is not installed in '", env_name,
               "': local models (embed_local(), embed_sentences()) will not work.")
@@ -227,7 +267,7 @@ set_groq_key <- function(key = Sys.getenv("GROQ_API_KEY"), max_retries = 5L,
   .pkg_env$groq_client <- .make_groq_client(key, max_retries = max_retries,
                                             timeout = timeout)
   .pkg_env$groq_key <- key
-  cat("Groq API key set successfully.\n")
+  .say("Groq API key set successfully.\n")
 
   invisible(NULL)
 }
@@ -258,7 +298,7 @@ set_voyage_key <- function(key = Sys.getenv("VOYAGE_API_KEY")) {
   voyageai <- reticulate::import("voyageai")
   .pkg_env$voyage_client <- voyageai$Client(api_key = key)
   .pkg_env$voyage_key <- key
-  cat("Voyage AI API key set successfully.\n")
+  .say("Voyage AI API key set successfully.\n")
 
   invisible(NULL)
 }
@@ -288,7 +328,7 @@ set_jina_key <- function(key = Sys.getenv("JINA_API_KEY")) {
   }
 
   .pkg_env$jina_key <- key
-  cat("Jina AI API key set successfully.\n")
+  .say("Jina AI API key set successfully.\n")
 
   invisible(NULL)
 }
@@ -324,8 +364,8 @@ set_jina_key <- function(key = Sys.getenv("JINA_API_KEY")) {
 #' @export
 verify_setup <- function(test_apis = FALSE, groq_model = "openai/gpt-oss-20b") {
 
-  cat("Checking Python packages...\n")
-  cat("----------------------------------------------------------------------\n")
+  .say("Checking Python packages...\n")
+  .say("----------------------------------------------------------------------\n")
 
   versions <- list()
 
@@ -336,32 +376,32 @@ verify_setup <- function(test_apis = FALSE, groq_model = "openai/gpt-oss-20b") {
       mod <- reticulate::import(pkg)
       ver <- tryCatch(mod$`__version__`, error = function(e) "OK")
       versions[[pkg]] <- ver
-      cat(sprintf("  %-15s %s\n", paste0(pkg, ":"), ver))
+      .say(sprintf("  %-15s %s\n", paste0(pkg, ":"), ver))
     }, error = function(e) {
       versions[[pkg]] <<- "NOT FOUND"
-      cat(sprintf("  %-15s NOT FOUND\n", paste0(pkg, ":")))
+      .say(sprintf("  %-15s NOT FOUND\n", paste0(pkg, ":")))
     })
   }
 
   if (test_apis) {
-    cat("\nTesting API connectivity...\n")
-    cat("----------------------------------------------------------------------\n")
+    .say("\nTesting API connectivity...\n")
+    .say("----------------------------------------------------------------------\n")
 
     # Test Groq
     tryCatch({
       .test_groq_api(groq_model)
-      cat(sprintf("  Groq API:      OK (%s)\n", groq_model))
+      .say(sprintf("  Groq API:      OK (%s)\n", groq_model))
     }, error = function(e) {
-      cat("  Groq API:      FAILED -", conditionMessage(e), "\n")
+      .say("  Groq API:      FAILED -", conditionMessage(e), "\n")
     })
 
     # Test Voyage AI
     tryCatch({
       vo <- .get_voyageai()
       vo$embed(list("test"), model = "voyage-4", input_type = "query")
-      cat("  Voyage AI API: OK\n")
+      .say("  Voyage AI API: OK\n")
     }, error = function(e) {
-      cat("  Voyage AI API: FAILED -", conditionMessage(e), "\n")
+      .say("  Voyage AI API: FAILED -", conditionMessage(e), "\n")
     })
 
     # Test Jina AI
@@ -369,21 +409,21 @@ verify_setup <- function(test_apis = FALSE, groq_model = "openai/gpt-oss-20b") {
       jina_key <- .get_jina_key()
       .jina_embed_request(list("test"), model = "jina-embeddings-v3",
                           task = "text-matching", api_key = jina_key)
-      cat("  Jina AI API:   OK\n")
+      .say("  Jina AI API:   OK\n")
     }, error = function(e) {
-      cat("  Jina AI API:   FAILED -", conditionMessage(e), "\n")
+      .say("  Jina AI API:   FAILED -", conditionMessage(e), "\n")
     })
 
     # Test TypeSafe (Jev)
     tryCatch({
       jev_list_models()
-      cat("  TypeSafe (Jev): OK\n")
+      .say("  TypeSafe (Jev): OK\n")
     }, error = function(e) {
-      cat("  TypeSafe (Jev): FAILED -", conditionMessage(e), "\n")
+      .say("  TypeSafe (Jev): FAILED -", conditionMessage(e), "\n")
     })
   }
 
-  cat("\n")
+  .say("\n")
   invisible(versions)
 }
 
@@ -441,17 +481,17 @@ list_models <- function(type = NULL) {
         models_df <- models_df[models_df$type == type, , drop = FALSE]
       }
 
-      cat(sprintf("Available Groq models (%d):\n", nrow(models_df)))
-      cat("----------------------------------------------------------------------\n")
+      .say(sprintf("Available Groq models (%d):\n", nrow(models_df)))
+      .say("----------------------------------------------------------------------\n")
       for (i in seq_len(nrow(models_df))) {
-        cat(sprintf("  %-45s %s\n",
+        .say(sprintf("  %-45s %s\n",
                     models_df$model[i],
                     ifelse(is.na(models_df$context_window[i]), "",
                            paste0("(", formatC(models_df$context_window[i],
                                                format = "d", big.mark = ","),
                                   " ctx)"))))
       }
-      cat("----------------------------------------------------------------------\n")
+      .say("----------------------------------------------------------------------\n")
       return(invisible(models_df))
     }
   }
@@ -479,28 +519,45 @@ list_models <- function(type = NULL) {
     models <- models[models$type == type, , drop = FALSE]
   }
 
-  cat("Available Groq models (static list - set API key for live query):\n")
-  cat("----------------------------------------------------------------------\n")
+  .say("Available Groq models (static list - set API key for live query):\n")
+  .say("----------------------------------------------------------------------\n")
   for (i in seq_len(nrow(models))) {
-    cat(sprintf("  %-45s %s\n", models$model[i],
+    .say(sprintf("  %-45s %s\n", models$model[i],
                 ifelse(is.na(models$context_window[i]), "",
                        paste0("(", formatC(models$context_window[i],
                                            format = "d", big.mark = ","), " ctx)"))))
   }
-  cat("----------------------------------------------------------------------\n")
+  .say("----------------------------------------------------------------------\n")
   invisible(models)
 }
 
 
 # Internal helpers
 
+#' Folder of a Python environment
+#'
+#' A path (absolute, starting with "~", or containing a separator) is used as
+#' given. A name is looked up first in the working directory (where versions
+#' up to 0.2.3 created the environment) and then in the user data directory
+#' of the package, which is also where setup_llm_env() creates new ones.
+#' @noRd
+.env_dir <- function(env_name = "llm_env", for_setup = FALSE) {
+  if (grepl("[/\\\\]", env_name) || startsWith(env_name, "~")) {
+    return(path.expand(env_name))
+  }
+  local <- file.path(getwd(), env_name)
+  if (!for_setup && dir.exists(local)) return(local)
+  file.path(tools::R_user_dir("llmClassificR", which = "data"), env_name)
+}
+
 #' Get the Python path for a given environment
 #' @noRd
 .get_python_path <- function(env_name = "llm_env") {
+  env_dir <- .env_dir(env_name)
   if (.Platform$OS.type == "windows") {
-    file.path(getwd(), env_name, "Scripts", "python.exe")
+    file.path(env_dir, "Scripts", "python.exe")
   } else {
-    file.path(getwd(), env_name, "bin", "python")
+    file.path(env_dir, "bin", "python")
   }
 }
 

@@ -1,3 +1,30 @@
+# llmClassificR 0.2.4
+
+## Preparation for CRAN
+
+* `setup_llm_env()` no longer writes the Python environment to the working
+  directory by default. A name (default `"llm_env"`) is now created in the
+  user data directory of the package, `tools::R_user_dir("llmClassificR",
+  which = "data")`, and a path (for example `"./llm_env"`) is created where
+  it points. The function asks for confirmation before writing (new argument
+  `ask = TRUE`; in non-interactive sessions, set `ask = FALSE` to confirm) and
+  returns the path of the environment invisibly.
+* `activate_llm_env()` looks for an environment first in the working
+  directory, where versions up to 0.2.3 created it, so existing setups keep
+  working, and then in the user data directory. `env_name` can also be a path.
+* Informational output (progress, setup reports, model lists) is now written
+  with `message()` instead of `cat()` or `print()`, so it can be silenced with
+  `suppressMessages()`. The text is unchanged. `print()` methods are unchanged.
+* New runnable examples, with the MiniLM embeddings shipped with the package,
+  for `cosine_similarity_matrix()`, `ega_classify()`, `prime_weight_encode()`,
+  `plot_prime_weight()`, `probe_layers()`, and `evaluate_layers()`.
+* DESCRIPTION: title without "in R", service and software names in single
+  quotes, a reference for Exploratory Graph Analysis, `SystemRequirements`
+  for the optional Python environment, and the copyright-holder role.
+* New `inst/CITATION`.
+* The documentation describes the package and its data sets in general terms,
+  without references to course materials.
+
 # llmClassificR 0.2.3
 
 ## Groq model updates

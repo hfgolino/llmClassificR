@@ -47,7 +47,7 @@ set_typesafe_key <- function(key = Sys.getenv("TYPESAFE_API_KEY")) {
          "Get one at https://console.typesafe.ai/settings/keys", call. = FALSE)
   }
   .pkg_env$typesafe_key <- key
-  cat("TypeSafe (Jev) API key set successfully.\n")
+  .say("TypeSafe (Jev) API key set successfully.\n")
   invisible(NULL)
 }
 
@@ -355,11 +355,11 @@ jev_ask_many <- function(texts, questions, model = "jev-1.13.0",
   usage <- jev_usage(out)
   usage$seconds <- round(as.numeric(difftime(Sys.time(), t0, units = "secs")), 1)
   if (verbose) {
-    cat(sprintf("Jev: %d texts in %.1f s | failed: %d | input tokens: %s | cost: $%.5f\n",
+    .say(sprintf("Jev: %d texts in %.1f s | failed: %d | input tokens: %s | cost: $%.5f\n",
                 usage$n_texts, usage$seconds, usage$n_failed,
                 format(usage$input_tokens, big.mark = ","), usage$cost_usd))
     if (usage$n_failed > 0) {
-      cat("  First error:", errors[!is.na(errors)][1], "\n")
+      .say("  First error:", errors[!is.na(errors)][1], "\n")
     }
   }
   attr(out, "usage") <- usage

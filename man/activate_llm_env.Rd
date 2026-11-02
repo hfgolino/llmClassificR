@@ -7,7 +7,10 @@
 activate_llm_env(env_name = "llm_env", preload_torch = TRUE)
 }
 \arguments{
-\item{env_name}{Name of the virtual environment. Default is \code{"llm_env"}.}
+\item{env_name}{Name of the virtual environment, or the path to its folder.
+Default is \code{"llm_env"}. A name is looked up first in the working
+directory and then in the user data directory of the package (see
+\code{\link{setup_llm_env}}).}
 
 \item{preload_torch}{Logical. Load PyTorch right away (default \code{TRUE}).
 See Details.}

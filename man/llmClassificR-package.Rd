@@ -4,12 +4,12 @@
 \name{llmClassificR-package}
 \alias{llmClassificR-package}
 \alias{llmClassificR}
-\title{llmClassificR: Text Classification with Large Language Models in R}
+\title{llmClassificR: Text Classification with Large Language Models}
 \description{
-A user-friendly toolkit for text classification with Large Language Models in R, from bag-of-words to Jev. Provides robust batch zero-shot classification with Groq LLMs (direct, few-shot, chain-of-thought, JSON, strict JSON Schema, multi-model ensemble, self-consistency, scoring, and LLM-as-judge), Jev "System One" classification (TypeSafe AI) from pure R, embedding extraction (API-based via Voyage AI and Jina AI, and local via HuggingFace transformers), a do-it-yourself Jev-like classifier from label descriptions, calibration tools (expected calibration error, Brier score, reliability diagrams, temperature and Platt scaling), bag-of-words baselines, learning curves and linear probes, retrieval-augmented generation (RAG), synthetic data generation and quality checks, and integration with Exploratory Graph Analysis (EGA) for unsupervised text classification.
+A toolkit for text classification with large language models (LLMs), from bag-of-words baselines to general-purpose classification models. Provides batch zero-shot classification with LLMs served by 'Groq' (direct, few-shot, chain-of-thought, JSON, strict JSON Schema, multi-model ensemble, self-consistency, scoring, and LLM-as-judge), classification with the 'Jev' model of 'TypeSafe' from pure R, embedding extraction through the 'Voyage AI' and 'Jina AI' services and from local 'Hugging Face' transformer models, a do-it-yourself 'Jev'-like classifier built from label descriptions, calibration tools (expected calibration error, Brier score, reliability diagrams, temperature and Platt scaling), bag-of-words baselines, learning curves and linear probes, retrieval-augmented generation (RAG), synthetic data generation and quality checks, and unsupervised text classification with Exploratory Graph Analysis (EGA; Golino and Epskamp, 2017, \doi{10.1371/journal.pone.0174035}), including a prime-weight encoding of the networks estimated from every layer of a transformer.
 
-A user-friendly toolkit for text classification with Large
-Language Models in R. It covers the whole path from bag-of-words to Jev:
+A toolkit for text classification with large language models
+(LLMs). It covers the whole path from bag-of-words baselines to Jev:
 robust batch zero-shot classification with Groq LLMs (direct, few-shot,
 chain-of-thought, JSON, strict JSON Schema, ensembles, self-consistency,
 scoring and LLM-as-judge), Jev "System One" classification (TypeSafe AI)
@@ -238,7 +238,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Hudson Golino \email{hfg9s@virginia.edu} (\href{https://orcid.org/0000-0002-1601-1447}{ORCID})
+\strong{Maintainer}: Hudson Golino \email{hfg9s@virginia.edu} (\href{https://orcid.org/0000-0002-1601-1447}{ORCID}) [copyright holder]
 
 
 Hudson Golino \email{hfg9s@virginia.edu}

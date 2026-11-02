@@ -196,7 +196,7 @@ discover_topics <- function(texts,
 
   # Embed if needed
   if (is.null(embeddings)) {
-    cat("Embedding documents...\n")
+    .say("Embedding documents...\n")
     embeddings <- embed_voyage(texts, model = embed_model)
   }
 
@@ -241,9 +241,9 @@ Return ONLY valid JSON.',
   topics_df <- topics_df[!is.na(topics_df$label) & nzchar(topics_df$label) &
                            !duplicated(tolower(topics_df$label)), , drop = FALSE]
   rownames(topics_df) <- NULL
-  cat("Discovered", nrow(topics_df), "topics:\n")
+  .say("Discovered", nrow(topics_df), "topics:\n")
   for (i in seq_len(nrow(topics_df))) {
-    cat(sprintf("  %d. %s: %s\n", i, topics_df$label[i], topics_df$description[i]))
+    .say(sprintf("  %d. %s: %s\n", i, topics_df$label[i], topics_df$description[i]))
   }
 
   topics_df
@@ -299,20 +299,20 @@ classify_with_rag <- function(texts,
 
   # Step 1: Embed
   if (is.null(embeddings)) {
-    cat("Step 1: Embedding documents...\n")
+    .say("Step 1: Embedding documents...\n")
     embeddings <- embed_voyage(texts, model = embed_model)
   } else {
-    cat("Step 1: Using provided embeddings.\n")
+    .say("Step 1: Using provided embeddings.\n")
   }
 
   # Step 2: Discover topics
-  cat("Step 2: Discovering topics via RAG...\n")
+  .say("Step 2: Discovering topics via RAG...\n")
   topics <- discover_topics(texts, n_topics = n_topics,
                             embeddings = embeddings, model = model,
                             embed_model = embed_model)
 
   # Step 3: Classify
-  cat("Step 3: Classifying all texts...\n")
+  .say("Step 3: Classifying all texts...\n")
   classifications <- classify_direct(texts, classes = topics$label, model = model)
 
   list(

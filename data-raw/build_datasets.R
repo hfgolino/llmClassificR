@@ -17,13 +17,13 @@ extraversion_3p <- read.csv("data-raw/extraversion_openai120b.csv", stringsAsFac
 usethis::use_data(extraversion_3p, overwrite = TRUE)
 cat("Saved extraversion_3p:", nrow(extraversion_3p), "rows\n")
 
-# --- Extraversion (llama-3.1-8b-instant; course file extraversion.csv) ---
+# --- Extraversion (llama-3.1-8b-instant; source file extraversion.csv) ---
 extraversion_llama <- read.csv("data-raw/extraversion_llama.csv", stringsAsFactors = FALSE,
                                encoding = "UTF-8")
 usethis::use_data(extraversion_llama, overwrite = TRUE)
 cat("Saved extraversion_llama:", nrow(extraversion_llama), "rows\n")
 
-# --- Emotion-laden texts (course file neuroticism.csv) ---
+# --- Emotion-laden texts (source file neuroticism.csv) ---
 neuroticism <- read.csv("data-raw/neuroticism.csv", stringsAsFactors = FALSE, encoding = "UTF-8")
 usethis::use_data(neuroticism, overwrite = TRUE)
 cat("Saved neuroticism:", nrow(neuroticism), "rows\n")

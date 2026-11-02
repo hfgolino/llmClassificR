@@ -30,6 +30,17 @@
 #'
 #' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #' @examples
+#' # Offline, with the pre-computed MiniLM embeddings shipped with the package
+#' \donttest{
+#' if (requireNamespace("EGAnet", quietly = TRUE)) {
+#'   data(minilm_embeddings)
+#'   data(extraversion)
+#'   res <- ega_classify(minilm_embeddings$texts$extraversion, plot = FALSE)
+#'   table(res$communities, useNA = "ifany")
+#'   compute_nmi(extraversion$subtopic, res$communities)
+#' }
+#' }
+#'
 #' \dontrun{
 #' data(extraversion)
 #' embeddings <- embed_voyage(extraversion$text)
@@ -72,7 +83,7 @@ ega_classify <- function(embeddings,
   transposed_df <- as.data.frame(transposed)
 
   if (optimize_steps) {
-    cat("Running EGA.fit with walktrap optimization...\n")
+    .say("Running EGA.fit with walktrap optimization...\n")
     ega_result <- EGAnet::EGA.fit(
       transposed_df,
       model = model,
@@ -123,7 +134,7 @@ ega_classify <- function(embeddings,
 #'   is \code{2:25}.
 #' @param true_labels Optional vector of true labels. If given, the NMI of
 #'   every walktrap step is added to \code{step_results} (column \code{NMI})
-#'   for teaching and diagnostics. The chosen step never uses the labels.
+#'   as a diagnostic. The chosen step never uses the labels.
 #' @param remove_floor Logical. If \code{FALSE} (default), walktrap runs on
 #'   the raw encoding matrix, as in earlier versions. If \code{TRUE}, walktrap
 #'   runs on the floor-free \code{network} (see Details). Rescaling alone does
@@ -182,6 +193,21 @@ ega_classify <- function(embeddings,
 #' of steps and tended to find more communities.
 #'
 #' @examples
+#' # Offline, with the pre-computed MiniLM embeddings shipped with the package;
+#' # three blocks of embedding dimensions stand in for the layers of an encoder
+#' \donttest{
+#' if (requireNamespace("EGAnet", quietly = TRUE)) {
+#'   data(minilm_embeddings)
+#'   data(extraversion)
+#'   E <- minilm_embeddings$texts$extraversion
+#'   blocks <- list(block_1 = E[, 1:128], block_2 = E[, 129:256],
+#'                  block_3 = E[, 257:384])
+#'   pw <- prime_weight_encode(blocks)
+#'   table(pw$best_communities)
+#'   compute_nmi(extraversion$subtopic, pw$best_communities)
+#' }
+#' }
+#'
 #' \dontrun{
 #' data(extraversion)
 #' emb <- embed_local(extraversion$text, model_name = "bert-base-uncased")
@@ -228,12 +254,12 @@ prime_weight_encode <- function(layers,
   }
 
   n_layers <- length(layers)
-  cat("Running EGA on", n_layers, "layers...\n")
+  .say("Running EGA on", n_layers, "layers...\n")
 
   # Run EGA per layer
   layer_egas <- list()
   for (i in seq_len(n_layers)) {
-    cat("  Layer", i, "of", n_layers, "...")
+    .say("  Layer", i, "of", n_layers, "...")
     transposed <- t(layers[[i]])
     colnames(transposed) <- paste0("doc_", seq_len(ncol(transposed)))
     transposed_df <- as.data.frame(transposed)
@@ -242,10 +268,10 @@ prime_weight_encode <- function(layers,
       EGAnet::EGA(transposed_df, model = model, uni.method = uni_method,
                   plot.EGA = FALSE)
     }, error = function(e) {
-      cat(" FAILED\n")
+      .say(" FAILED\n")
       return(NULL)
     })
-    cat(" done\n")
+    .say(" done\n")
   }
 
   # Remove failed layers
@@ -309,7 +335,7 @@ prime_weight_encode <- function(layers,
   best_step <- step_results$steps[step_results$n_communities == mode_n][1]
   best_communities <- all_communities[[as.character(best_step)]]
 
-  cat("Best walktrap step", if (isTRUE(remove_floor)) "(floor-free network):" else "(raw encoding):",
+  .say("Best walktrap step", if (isTRUE(remove_floor)) "(floor-free network):" else "(raw encoding):",
       best_step, "->", mode_n, "communities\n")
 
   list(

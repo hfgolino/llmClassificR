@@ -98,7 +98,7 @@ generate_labeled_texts <- function(topics, n_per_topic = 5, n_batches = 1,
                                              schema = schema))
   out <- list()
   for (b in seq_len(n_batches)) {
-    cat("Batch", b, "of", n_batches, "\n")
+    .say("Batch", b, "of", n_batches, "\n")
     docs <- tryCatch({
       content <- .groq_chat(prompt, model = model, system = system_prompt,
                             temperature = temperature,

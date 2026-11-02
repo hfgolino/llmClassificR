@@ -96,7 +96,7 @@ run_in_chunks <- function(texts, classify_fun, chunk_size = 40, shuffle = TRUE,
   for (k in seq_along(chunks)) {
     idx <- chunks[[k]]
     if (verbose && length(chunks) > 1) {
-      cat("  Chunk", k, "of", length(chunks), "(", length(idx), "texts )\n")
+      .say("  Chunk", k, "of", length(chunks), "(", length(idx), "texts )\n")
     }
     res <- tryCatch(classify_fun(texts[idx]), error = function(e) {
       errors[k] <<- conditionMessage(e)

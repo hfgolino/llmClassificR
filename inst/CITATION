@@ -1,0 +1,12 @@
+bibentry(
+  bibtype = "Manual",
+  title   = "{llmClassificR}: Text Classification with Large Language Models",
+  author  = person("Hudson F.", "Golino"),
+  year    = "2026",
+  note    = sprintf("R package version %s", meta$Version),
+  url     = "https://github.com/hfgolino/llmClassificR",
+  textVersion = paste0(
+    "Golino, H. F. (2026). llmClassificR: Text classification with large ",
+    "language models. R package version ", meta$Version, ". ",
+    "https://github.com/hfgolino/llmClassificR")
+)

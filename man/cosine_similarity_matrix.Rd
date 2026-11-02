@@ -16,6 +16,11 @@ A symmetric numeric matrix of cosine similarities.
 Computes pairwise cosine similarities between all rows of a matrix.
 }
 \examples{
+# Offline, with the pre-computed MiniLM embeddings shipped with the package
+data(minilm_embeddings)
+E <- minilm_embeddings$texts$extraversion[1:5, ]
+round(cosine_similarity_matrix(E), 2)
+
 \dontrun{
 embeddings <- embed_voyage(texts)
 sim_mat <- cosine_similarity_matrix(embeddings)

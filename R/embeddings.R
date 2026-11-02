@@ -24,8 +24,8 @@
 #' @details
 #' Embeddings of documents and queries must come from the same model family
 #' (e.g., do not compare voyage-3.5 documents with voyage-4 queries).
-#' Voyage AI offers a free token allowance for new accounts, more than enough
-#' for the course activities.
+#' Voyage AI offers a free token allowance for new accounts, enough to try the
+#' functions on the data sets shipped with the package.
 #'
 #' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
@@ -66,7 +66,7 @@ embed_voyage <- function(texts,
   all_embeddings <- list()
   for (b in seq_along(starts)) {
     idx <- starts[b]:min(starts[b] + batch_size - 1, length(texts))
-    if (length(starts) > 1) cat("  Batch", b, "of", length(starts), "\n")
+    if (length(starts) > 1) .say("  Batch", b, "of", length(starts), "\n")
     args <- list(texts = as.list(texts[idx]), model = model, input_type = input_type)
     if (!is.null(output_dimension)) args$output_dimension <- as.integer(output_dimension)
     result <- do.call(vo$embed, args)
@@ -170,7 +170,7 @@ embed_jina <- function(texts,
   # Process in batches
   n_batches <- ceiling(n / batch_size)
   if (n_batches > 1) {
-    cat("Embedding", n, "texts in", n_batches, "batches...\n")
+    .say("Embedding", n, "texts in", n_batches, "batches...\n")
   }
 
   for (b in seq_len(n_batches)) {
@@ -179,7 +179,7 @@ embed_jina <- function(texts,
     batch_texts <- texts[start_idx:end_idx]
 
     if (n_batches > 1) {
-      cat("  Batch", b, "of", n_batches, "(", length(batch_texts), "texts)...\n")
+      .say("  Batch", b, "of", n_batches, "(", length(batch_texts), "texts)...\n")
     }
 
     result <- .jina_embed_request(
@@ -258,12 +258,12 @@ list_jina_models <- function() {
     stringsAsFactors = FALSE
   )
 
-  cat("Available Jina AI embedding models:\n")
-  cat("----------------------------------------------------------------------\n")
+  .say("Available Jina AI embedding models:\n")
+  .say("----------------------------------------------------------------------\n")
   for (i in seq_len(nrow(models))) {
-    cat(sprintf("  %-35s %s\n", models$model[i], models$description[i]))
+    .say(sprintf("  %-35s %s\n", models$model[i], models$description[i]))
   }
-  cat("----------------------------------------------------------------------\n")
+  .say("----------------------------------------------------------------------\n")
   invisible(models)
 }
 
@@ -404,7 +404,7 @@ embed_local <- function(texts,
   transformers <- reticulate::import("transformers")
   torch <- reticulate::import("torch")
 
-  cat("Loading model:", model_name, "...\n")
+  .say("Loading model:", model_name, "...\n")
   tokenizer <- transformers$AutoTokenizer$from_pretrained(
     model_name,
     clean_up_tokenization_spaces = TRUE
@@ -419,16 +419,16 @@ embed_local <- function(texts,
 
   num_layers <- model$config$num_hidden_layers
   hidden_size <- model$config$hidden_size
-  cat("Layers:", num_layers, "| Hidden size:", hidden_size, "\n")
+  .say("Layers:", num_layers, "| Hidden size:", hidden_size, "\n")
 
   all_layer_embeddings <- vector("list", num_layers + 1L)
   for (l in seq_along(all_layer_embeddings)) {
     all_layer_embeddings[[l]] <- matrix(0, nrow = length(texts), ncol = hidden_size)
   }
 
-  cat("Extracting embeddings for", length(texts), "texts...\n")
+  .say("Extracting embeddings for", length(texts), "texts...\n")
   for (i in seq_along(texts)) {
-    if (i %% 20 == 0) cat("  Processing text", i, "of", length(texts), "\n")
+    if (i %% 20 == 0) .say("  Processing text", i, "of", length(texts), "\n")
 
     # One text at a time: no padding needed (padding tokens are masked anyway)
     inputs <- tokenizer(
@@ -453,7 +453,7 @@ embed_local <- function(texts,
       all_layer_embeddings[[layer_idx]][i, ] <- pooled[layer_idx, ]
     }
   }
-  cat("Extraction complete!\n")
+  .say("Extraction complete!\n")
 
   # Name the matrices
   for (l in seq_along(all_layer_embeddings)) {
@@ -507,7 +507,7 @@ embed_local <- function(texts,
       error = function(e) stop(conditionMessage(e), call. = FALSE)
     )
   }
-  cat("Running embed_local() in a background R process (isolate = TRUE)...\n")
+  .say("Running embed_local() in a background R process (isolate = TRUE)...\n")
   res <- tryCatch(
     callr::r(child,
              args = list(texts = as.character(texts), model_name = model_name,
@@ -561,6 +561,17 @@ embed_local <- function(texts,
 #' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #'
 #' @examples
+#' # Offline, with the pre-computed MiniLM embeddings shipped with the package;
+#' # three blocks of embedding dimensions stand in for the layers of an encoder
+#' \donttest{
+#' data(minilm_embeddings)
+#' data(extraversion)
+#' E <- minilm_embeddings$texts$extraversion
+#' blocks <- list(block_1 = E[, 1:128], block_2 = E[, 129:256],
+#'                block_3 = E[, 257:384])
+#' evaluate_layers(blocks, extraversion$subtopic)
+#' }
+#'
 #' \dontrun{
 #' data(extraversion)
 #' emb <- embed_local(extraversion$text, model_name = "bert-base-uncased")
@@ -595,7 +606,7 @@ evaluate_layers <- function(layers, labels) {
     stringsAsFactors = FALSE
   )
 
-  cat("Evaluating", n_layers, "layers...\n")
+  .say("Evaluating", n_layers, "layers...\n")
 
   for (l in seq_len(n_layers)) {
     emb <- layers[[l]]
@@ -644,6 +655,6 @@ evaluate_layers <- function(layers, labels) {
     z(results$explained_var) +
     z(results$separation_ratio)
 
-  cat("Done.\n")
+  .say("Done.\n")
   results
 }

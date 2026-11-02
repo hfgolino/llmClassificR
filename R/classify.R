@@ -31,6 +31,8 @@
 #' and a warning is shown. The pause between chunks is
 #' \code{getOption("llmClassificR.pause", 2)} seconds; set
 #' \code{options(llmClassificR.verbose = FALSE)} to hide the progress messages.
+#' @return No return value; this page documents the batch settings shared by
+#'   the classify functions.
 #' @name batch_settings
 #' @keywords internal
 NULL
@@ -548,17 +550,17 @@ classify_ensemble <- function(texts, classes,
                               chunk_size = 40, shuffle = TRUE, seed = 2026) {
   classes <- as.character(classes)
 
-  cat("Running ensemble across", length(models), "models...\n")
+  .say("Running ensemble across", length(models), "models...\n")
 
   model_preds <- list()
   for (m in seq_along(models)) {
-    cat("  Model", m, ":", models[m], "\n")
+    .say("  Model", m, ":", models[m], "\n")
     model_preds[[m]] <- tryCatch({
       res <- classify_direct(texts, classes, model = models[m],
                              chunk_size = chunk_size, shuffle = shuffle, seed = seed)
       res$prediction
     }, error = function(e) {
-      cat("  FAILED:", conditionMessage(e), "\n")
+      .say("  FAILED:", conditionMessage(e), "\n")
       rep(NA_character_, length(texts))
     })
   }
@@ -581,7 +583,7 @@ classify_ensemble <- function(texts, classes,
     }
   }
 
-  cat("Model agreement rate:", round(mean(agreement) * 100, 1), "%\n")
+  .say("Model agreement rate:", round(mean(agreement) * 100, 1), "%\n")
 
   data.frame(
     text_id = seq_along(texts),
@@ -632,7 +634,7 @@ classify_self_consistency <- function(texts, classes, n_runs = 5,
                                       chunk_size = 40, seed = 2026) {
   classes <- as.character(classes)
   votes <- vapply(seq_len(n_runs), function(r) {
-    cat("Self-consistency run", r, "of", n_runs, "\n")
+    .say("Self-consistency run", r, "of", n_runs, "\n")
     chunk_fun <- function(x) {
       prompt <- sprintf(
         'Classify each numbered text into exactly ONE of these categories: %s

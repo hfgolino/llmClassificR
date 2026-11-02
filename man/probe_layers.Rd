@@ -36,6 +36,19 @@ every layer, while the unsupervised EGA structure changes a lot across
 layers (and across models).
 }
 \examples{
+# Offline, with the pre-computed MiniLM embeddings shipped with the package;
+# three blocks of embedding dimensions stand in for the layers of an encoder
+\donttest{
+if (requireNamespace("glmnet", quietly = TRUE)) {
+  data(minilm_embeddings)
+  data(extraversion)
+  E <- minilm_embeddings$texts$extraversion
+  blocks <- list(block_1 = E[, 1:128], block_2 = E[, 129:256],
+                 block_3 = E[, 257:384])
+  probe_layers(blocks, extraversion$subtopic)
+}
+}
+
 \dontrun{
 activate_llm_env()
 data(extraversion)

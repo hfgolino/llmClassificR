@@ -3,6 +3,10 @@
 \name{batch_settings}
 \alias{batch_settings}
 \title{Batch settings shared by the classify functions}
+\value{
+No return value; this page documents the batch settings shared by
+the classify functions.
+}
 \description{
 Batch settings shared by the classify functions
 }

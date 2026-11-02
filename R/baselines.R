@@ -219,6 +219,19 @@ linear_probe <- function(X, y, k = 5, alpha = 0.5, seed = 2026, method = "Linear
 #'   \code{EGA_NMI} and \code{EGA_dimensions}.
 #'
 #' @examples
+#' # Offline, with the pre-computed MiniLM embeddings shipped with the package;
+#' # three blocks of embedding dimensions stand in for the layers of an encoder
+#' \donttest{
+#' if (requireNamespace("glmnet", quietly = TRUE)) {
+#'   data(minilm_embeddings)
+#'   data(extraversion)
+#'   E <- minilm_embeddings$texts$extraversion
+#'   blocks <- list(block_1 = E[, 1:128], block_2 = E[, 129:256],
+#'                  block_3 = E[, 257:384])
+#'   probe_layers(blocks, extraversion$subtopic)
+#' }
+#' }
+#'
 #' \dontrun{
 #' activate_llm_env()
 #' data(extraversion)
@@ -242,7 +255,7 @@ probe_layers <- function(layers, labels, ega = FALSE, k = 5, alpha = 0.5, seed =
   num <- suppressWarnings(as.integer(sub("^layer_", "", nm)))
   if (anyNA(num)) num <- seq(0, n_layers - 1)
   rows <- lapply(seq_len(n_layers), function(l) {
-    cat("  Layer", num[l], "(", l, "of", n_layers, ")\n")
+    .say("  Layer", num[l], "(", l, "of", n_layers, ")\n")
     ev <- linear_probe(layers[[l]], labels, k = k, alpha = alpha, seed = seed)
     row <- data.frame(layer = nm[l], layer_number = num[l],
                       probe_accuracy = ev$accuracy, probe_macro_F1 = ev$macro_F1,
@@ -309,8 +322,9 @@ top_terms <- function(X, y, n = 8, alpha = 0.5, seed = 2026) {
 #'
 #' TF-IDF features + cross-validated elastic-net logistic regression, the
 #' baseline every LLM classifier should be compared with. It is fast, free,
-#' private (runs locally) and interpretable. On the course extraversion data
-#' it reaches about 97\% accuracy, which is a high bar for zero-shot LLMs.
+#' private (runs locally) and interpretable. On the \code{\link{extraversion}}
+#' data shipped with the package it reaches about 97\% accuracy, which is a
+#' high bar for zero-shot LLMs.
 #'
 #' @param texts Character vector of texts.
 #' @param labels Vector of true labels.
@@ -340,10 +354,10 @@ top_terms <- function(X, y, n = 8, alpha = 0.5, seed = 2026) {
 #' @export
 bow_baseline <- function(texts, labels, k = 5, alpha = 0.5, seed = 2026, n_top = 8, ...) {
   X <- bow_features(texts, ...)
-  cat("Bag-of-words matrix:", nrow(X), "texts x", ncol(X), "terms\n")
+  .say("Bag-of-words matrix:", nrow(X), "texts x", ncol(X), "terms\n")
   cv <- cv_logistic(X, labels, k = k, alpha = alpha, seed = seed)
   ev <- evaluate_classification(labels, cv$prediction, "TF-IDF + logistic regression")
-  print(ev, row.names = FALSE)
+  .say_print(ev, row.names = FALSE)
   list(evaluation = ev,
        predictions = cv,
        top_terms = if (n_top > 0) top_terms(X, labels, n = n_top, alpha = alpha, seed = seed) else NULL,

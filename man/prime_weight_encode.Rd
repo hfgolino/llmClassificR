@@ -26,7 +26,7 @@ is \code{2:25}.}
 
 \item{true_labels}{Optional vector of true labels. If given, the NMI of
 every walktrap step is added to \code{step_results} (column \code{NMI})
-for teaching and diagnostics. The chosen step never uses the labels.}
+as a diagnostic. The chosen step never uses the labels.}
 
 \item{remove_floor}{Logical. If \code{FALSE} (default), walktrap runs on
 the raw encoding matrix, as in earlier versions. If \code{TRUE}, walktrap
@@ -100,6 +100,21 @@ unsupervised result. Report the label-free \code{best_communities}.
 }
 
 \examples{
+# Offline, with the pre-computed MiniLM embeddings shipped with the package;
+# three blocks of embedding dimensions stand in for the layers of an encoder
+\donttest{
+if (requireNamespace("EGAnet", quietly = TRUE)) {
+  data(minilm_embeddings)
+  data(extraversion)
+  E <- minilm_embeddings$texts$extraversion
+  blocks <- list(block_1 = E[, 1:128], block_2 = E[, 129:256],
+                 block_3 = E[, 257:384])
+  pw <- prime_weight_encode(blocks)
+  table(pw$best_communities)
+  compute_nmi(extraversion$subtopic, pw$best_communities)
+}
+}
+
 \dontrun{
 data(extraversion)
 emb <- embed_local(extraversion$text, model_name = "bert-base-uncased")

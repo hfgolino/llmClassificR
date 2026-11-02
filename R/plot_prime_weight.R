@@ -105,6 +105,21 @@ match_communities <- function(found, truth, extra = "Extra") {
 #'
 #' @author Hudson Golino \email{hfg9s@@virginia.edu}
 #' @examples
+#' # Offline, with the pre-computed MiniLM embeddings shipped with the package;
+#' # three blocks of embedding dimensions stand in for the layers of an encoder
+#' \donttest{
+#' if (requireNamespace("EGAnet", quietly = TRUE) &&
+#'     requireNamespace("ggpubr", quietly = TRUE)) {
+#'   data(minilm_embeddings)
+#'   data(extraversion)
+#'   E <- minilm_embeddings$texts$extraversion
+#'   blocks <- list(block_1 = E[, 1:128], block_2 = E[, 129:256],
+#'                  block_3 = E[, 257:384])
+#'   pw <- prime_weight_encode(blocks)
+#'   plot_prime_weight(pw, true_labels = extraversion$subtopic)
+#' }
+#' }
+#'
 #' \dontrun{
 #' data(personality_descriptions)
 #' traits <- personality_descriptions$Personality
@@ -117,7 +132,8 @@ match_communities <- function(found, truth, extra = "Extra") {
 #' # Communities and true labels, same layout and matched colors
 #' p <- plot_prime_weight(pw, true_labels = traits)
 #' p
-#' ggplot2::ggsave("prime_weight.png", p, width = 8, height = 12, bg = "white")
+#' ggplot2::ggsave(file.path(tempdir(), "prime_weight.png"), p, width = 8, height = 12,
+#'                 bg = "white")
 #'
 #' # Side by side, another walktrap step
 #' plot_prime_weight(pw, true_labels = traits, nrow = 1,
